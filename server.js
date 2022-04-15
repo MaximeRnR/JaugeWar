@@ -1,14 +1,11 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
-const http = require('http');
-const server = http.createServer(app);
+const PORT = process.env.PORT || 3000;
 const path = require('path');
-
-const {Server} = require('socket.io');
-
-app.listen(process.env.PORT || 3000);
-
+const express = require('express');
+const {Server} = require("socket.io");
+const server = express()
+    .use(express.static(__dirname + '/dist'))
+    .use((req, res) => res.sendFile(path.join(__dirname + '/dist/index.html')))
+    .listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 const io = new Server(server, {
     cors: {
@@ -16,19 +13,11 @@ const io = new Server(server, {
     }
 });
 
-io.listen(server);
 
 // Start the app by listening on the default Heroku port
 
 const jaugeWarState = {topColor: 250, bottomColor: 250};
 
-
-app.use(express.static(__dirname + '/dist'));
-app.use(cors());
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname + '/dist/index.html'));
-});
 
 io.on('connection', (socket) => {
     console.log('a user connected');
