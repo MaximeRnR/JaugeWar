@@ -1,0 +1,24 @@
+name: Deploy Hop
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: akhileshns/heroku-deploy@v3.12.12 # This is the action
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: "jauge-war" #Must be unique in Heroku
+          heroku_email: "maxime.rnr@gmail.com"
+
+      # Runs a single command using the runners shell
+      - name: Download dependencies 🗃️
+        run: npm install
+
+      - name: Build 🔧
+        run: npm run build
