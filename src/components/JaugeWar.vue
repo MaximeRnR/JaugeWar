@@ -3,11 +3,12 @@
 import {io} from "socket.io-client";
 import {onMounted, ref} from "vue";
 
+var HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
 let ctx: CanvasRenderingContext2D | null;
 
 
-const socket = io();
+const socket = io(HOST);
 socket.on('jauge-war-state', function (jaugeWarState) {
   if (ctx) {
     ctx!.fillStyle = "#25A851";
