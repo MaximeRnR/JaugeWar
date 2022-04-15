@@ -3,7 +3,7 @@
 import {io} from "socket.io-client";
 import {onMounted, ref} from "vue";
 
-var HOST = location.origin.replace(/^https/, 'ws')
+var HOST = location.origin.replace(/^http/, 'ws')
 console.log(HOST);
 const canvas = ref(null);
 let ctx: CanvasRenderingContext2D | null;
