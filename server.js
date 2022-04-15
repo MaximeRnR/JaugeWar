@@ -22,9 +22,9 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/dist/index.html'));
 });
 
-server.listen(3000, () => {
-    console.log('listening on *:3000');
-});
+
+// Start the app by listening on the default Heroku port
+app.listen(process.env.PORT || 8080);
 
 io.on('connection', (socket) => {
     console.log('a user connected');
