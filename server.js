@@ -6,11 +6,19 @@ const server = http.createServer(app);
 const path = require('path');
 
 const {Server} = require('socket.io');
+
+app.listen(process.env.PORT || 3000);
+
+
 const io = new Server(server, {
     cors: {
         origin: "*"
     }
 });
+
+io.listen(server);
+
+// Start the app by listening on the default Heroku port
 
 const jaugeWarState = {topColor: 250, bottomColor: 250};
 
@@ -40,6 +48,3 @@ io.on('connection', (socket) => {
         io.emit('jauge-war-state', jaugeWarState);
     });
 })
-
-// Start the app by listening on the default Heroku port
-app.listen(process.env.PORT || 3000);
