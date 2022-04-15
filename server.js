@@ -22,10 +22,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/dist/index.html'));
 });
 
-
-// Start the app by listening on the default Heroku port
-app.listen(process.env.PORT || 3000);
-
 io.on('connection', (socket) => {
     console.log('a user connected');
     io.emit('jauge-war-state', jaugeWarState);
@@ -44,3 +40,6 @@ io.on('connection', (socket) => {
         io.emit('jauge-war-state', jaugeWarState);
     });
 })
+
+// Start the app by listening on the default Heroku port
+app.listen(process.env.PORT || 3000);
