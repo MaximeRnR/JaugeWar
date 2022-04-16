@@ -132,6 +132,7 @@ h1.title {
   height: 50px;
   width: 45%;
   border: 2px solid white;
+  touch-action: manipulation;
 }
 
 .btns-container button:active {
