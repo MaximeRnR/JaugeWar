@@ -1,12 +1,14 @@
 <script setup lang="ts">
 
 import {io} from "socket.io-client";
-import {onMounted, ref} from "vue";
+import {onMounted, reactive, ref} from "vue";
 
 const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
 const changeColorBtn = ref(null);
-const onlinePlayer = ref(0);
+const onlinePlayerCount = ref(0);
+const onlinePlayersRef = ref(new Array<{user:string, clics: number}>());
+const userClicks = ref(0);
 const inputUserName = ref(null);
 const goButton = ref(null);
 let topColor = ref("#25A851");
@@ -19,19 +21,21 @@ const width = window.innerWidth * 0.8;
 const height = 500;
 
 const socket = io(HOST);
-socket.on('jauge-war-state', function (jaugeWarState) {
+socket.on('jauge-war-state', function (jaugeWarState: { state: any, onlinePlayers: {user:string, clics: number}[] }) {
   if (ctx) {
-    topColor.value = jaugeWarState.colors.topColorHex;
-    bottomColor.value = jaugeWarState.colors.bottomColorHex;
-    ctx!.fillStyle = jaugeWarState.colors.topColorHex;
-    ctx!.fillRect(0, 0, width, jaugeWarState.topColor);
-    ctx!.fillStyle = jaugeWarState.colors.bottomColorHex;
-    ctx!.fillRect(0, 500 - jaugeWarState.bottomColor, width, 500);
+    topColor.value = jaugeWarState.state.colors.topColorHex;
+    bottomColor.value = jaugeWarState.state.colors.bottomColorHex;
+    ctx!.fillStyle = jaugeWarState.state.colors.topColorHex;
+    ctx!.fillRect(0, 0, width, jaugeWarState.state.topColor);
+    ctx!.fillStyle = jaugeWarState.state.colors.bottomColorHex;
+    ctx!.fillRect(0, 500 - jaugeWarState.state.bottomColor, width, 500);
   }
+  userClicks.value = jaugeWarState.onlinePlayers.filter(x => x.user === username.value)[0]?.clics ?? undefined;
+  onlinePlayersRef.value = jaugeWarState.onlinePlayers.sort((a,b) => b.clics - a.clics);
 });
 
 socket.on('players-count', (playersCount) => {
-      onlinePlayer.value = playersCount
+      onlinePlayerCount.value = playersCount
     }
 );
 
@@ -46,11 +50,13 @@ onMounted(() => {
     goButtonElement.remove();
     const inputUserNameElement = inputUserName.value as unknown as HTMLInputElement;
     inputUserNameElement.remove();
+    socket.emit('player-username', username.value);
+    socket.emit('jauge-action', {action: ``, username: username.value});
   }
 });
 
 function increaseColor(color: string) {
-  socket.emit('jauge-action', `increase ${color}`)
+  socket.emit('jauge-action', {action: `increase ${color}`, username: username.value});
 }
 
 function background(color: string) {
@@ -58,7 +64,7 @@ function background(color: string) {
 }
 
 function changeColor() {
-  socket.emit("change-color");
+  socket.emit("change-color", username.value);
   var btnElement = changeColorBtn.value as unknown as HTMLButtonElement;
   btnElement.disabled = true;
   setTimeout(() => btnElement.disabled = false, 60000);
@@ -74,24 +80,30 @@ function registerUsername() {
   const goButtonElement = goButton.value as unknown as HTMLButtonElement;
   goButtonElement.remove();
   inputUserNameElement.remove();
+  socket.emit('player-username', username.value);
 }
 </script>
 
 <template>
-  <h1 class="title"> Jauge War
-    <span>Joueur·euse en ligne: {{ onlinePlayer }}</span>
-    <span v-if="username">Connecté·e en tant que: {{username}}</span>
-  </h1>
+  <h1 class="title"> Jauge War  </h1>
   <canvas ref="canvas" width="500" height="500"></canvas>
   <div class="btns-container">
     <button class="increase-btn" :style="background(topColor)" @click="increaseColor('top-color')">+1</button>
     <button class="increase-btn" :style="background(bottomColor)" @click="increaseColor('bottom-color')">+1</button>
   </div>
-  <button ref="changeColorBtn" class="change-color" @click="changeColor()">Change colors</button>
-  <div class="user-name-form">
-    <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
-    <button ref="goButton" @click="registerUsername()">GO</button>
+  <div class="meta-info">
+    <button ref="changeColorBtn" class="change-color" @click="changeColor()">Change colors</button>
+    <div class="user-name-form">
+      <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
+      <button ref="goButton" @click="registerUsername()">GO</button>
+      <span v-if="username">{{ username }} clicks : {{ userClicks }}</span>
+    </div>
+    <div class="players-list" v-if="onlinePlayersRef">
+      <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
+      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{player.clics}}</span>
+    </div>
   </div>
+
 </template>
 
 <style scoped>
@@ -144,8 +156,15 @@ canvas {
   border-radius: 50px;
 }
 
+.meta-info {
+  margin-top: 12px;
+  width: 80%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-evenly;
+}
+
 .change-color {
-  margin-top: 10px;
   width: 30%;
   height: 30px;
   border-radius: 10px;
@@ -153,15 +172,14 @@ canvas {
   font-weight: bold;
 }
 
-.user-name-form{
+.user-name-form {
   display: flex;
-  width: 50%;
+  width: 30%;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
 }
 
-.user-name-form input{
-  margin-top: 12px;
+.user-name-form input {
   border-radius: 10px;
   border: 1px solid white;
   height: 20px;
@@ -171,9 +189,33 @@ canvas {
 
 .user-name-form button {
   height: 20px;
-  margin-top: 12px;
   margin-left: 12px;
   border-radius: 10px;
   border: 1px solid white;
 }
+
+.user-name-form span {
+  margin-top: 12px;
+  color: white;
+  font-weight: bold;
+  font-size: 2em;
+}
+
+.players-list {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  max-height: 20vh;
+  overflow: auto;
+}
+
+.players-list span {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: white;
+}
+
+
 </style>

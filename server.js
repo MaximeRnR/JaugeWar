@@ -29,33 +29,52 @@ const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()}
 
 const jaugeWarState = {topColor: 250, bottomColor: 250, colors: colors};
 let playersCount = 0;
+const registeredPlayer = new Map();
+function registeredPlayersToList(){
+    return [...registeredPlayer.entries()].map(x => {return {user: x[0], clics: x[1]}});
+}
 
 io.on('connection', (socket) => {
     console.log('a user connected');
     playersCount++;
     io.emit("players-count", playersCount);
-    io.emit('jauge-war-state', jaugeWarState);
+    io.emit('jauge-war-state', {state: jaugeWarState, onlinePlayers: registeredPlayersToList()});
     socket.on('disconnect', () => {
         playersCount--;
         io.emit("players-count", playersCount);
         console.log('user disconnected');
     });
 
-    socket.on('jauge-action', (msg) => {
-        if (msg.indexOf('top-color') !== -1 && jaugeWarState.topColor < 500) {
+    socket.on('jauge-action', (action) => {
+        if (action.action.indexOf('top-color') !== -1 && jaugeWarState.topColor < 500) {
             jaugeWarState.topColor++;
             jaugeWarState.bottomColor--;
+            if(registeredPlayer.has(action.username)){
+                registeredPlayer.set(action.username, registeredPlayer.get(action.username) + 1 );
+            }
         }
-        if (msg.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < 500) {
+        if (action.action.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < 500) {
             jaugeWarState.bottomColor++;
             jaugeWarState.topColor--;
+            if(registeredPlayer.has(action.username)){
+                registeredPlayer.set(action.username, registeredPlayer.get(action.username) + 1 );
+            }
         }
-        io.emit('jauge-war-state', jaugeWarState);
+        io.emit('jauge-war-state', {state: jaugeWarState, onlinePlayers: registeredPlayersToList()});
     });
 
-    socket.on('change-color', () => {
+    socket.on('change-color', (username) => {
         jaugeWarState.colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
-        io.emit('jauge-war-state', jaugeWarState);
+        io.emit('jauge-war-state', {state: jaugeWarState, onlinePlayers: registeredPlayersToList()});
+    });
+
+    socket.on('player-username', (username) => {
+        console.log(username);
+        if(registeredPlayer.has(username)){
+          return;
+        }
+        registeredPlayer.set(username, 0);
+        io.emit('jauge-war-state', {state: jaugeWarState, onlinePlayers: registeredPlayersToList()});
     })
 
 })
