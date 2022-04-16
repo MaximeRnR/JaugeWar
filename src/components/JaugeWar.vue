@@ -7,21 +7,25 @@ var HOST = location.origin.replace(/^http/, 'ws')
 console.log(HOST);
 const canvas = ref(null);
 let ctx: CanvasRenderingContext2D | null;
-
+const width = window.innerWidth * 0.8;
+const height = 500;
 
 const socket = io(HOST);
 socket.on('jauge-war-state', function (jaugeWarState) {
   if (ctx) {
     ctx!.fillStyle = "#25A851";
-    ctx!.fillRect(0, 0, 1000, jaugeWarState.topColor);
+    ctx!.fillRect(0, 0, width, jaugeWarState.topColor);
     ctx!.fillStyle = "#A8201D";
-    ctx!.fillRect(0, 500-jaugeWarState.bottomColor, 1000, 500);
+    ctx!.fillRect(0, 500-jaugeWarState.bottomColor, width, 500);
   }
 });
 
 onMounted(() => {
   const canvasElement = canvas.value as unknown as HTMLCanvasElement;
   ctx = canvasElement.getContext("2d");
+  canvasElement.width = width;
+  canvasElement.height = height
+
 });
 
 function increaseColor(color: string) {
@@ -31,7 +35,7 @@ function increaseColor(color: string) {
 
 <template>
   <h1> Jauge War </h1>
-  <canvas ref="canvas" width="1000" height="500"></canvas>
+  <canvas ref="canvas" width="500" height="500"></canvas>
   <div class="btns-container">
     <button class="increase-btn" style="background: #25A851" @click="increaseColor('top-color')">+1</button>
     <button class="increase-btn" style="background: #A8201D" @click="increaseColor('bottom-color')">+1</button>
