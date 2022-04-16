@@ -42,10 +42,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('jauge-action', (msg) => {
-        if (msg.indexOf('top-color') !== -1) {
+        if (msg.indexOf('top-color') !== -1 && jaugeWarState.topColor < 500) {
             jaugeWarState.topColor++;
             jaugeWarState.bottomColor--;
-        } else {
+        }
+        if (msg.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < 500) {
             jaugeWarState.bottomColor++;
             jaugeWarState.topColor--;
         }
