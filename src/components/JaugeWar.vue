@@ -6,6 +6,7 @@ import {onMounted, ref} from "vue";
 const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
 const changeColorBtn = ref(null);
+const onlinePlayer = ref(0);
 let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.8;
 const height = 500;
@@ -17,14 +18,17 @@ socket.on('jauge-war-state', function (jaugeWarState) {
   if (ctx) {
     topColor.value = jaugeWarState.colors.topColorHex;
     bottomColor.value = jaugeWarState.colors.bottomColorHex;
-    console.log(topColor.value)
-    console.log(bottomColor.value)
     ctx!.fillStyle = jaugeWarState.colors.topColorHex;
     ctx!.fillRect(0, 0, width, jaugeWarState.topColor);
     ctx!.fillStyle = jaugeWarState.colors.bottomColorHex;
     ctx!.fillRect(0, 500-jaugeWarState.bottomColor, width, 500);
   }
 });
+
+socket.on('players-count', (playersCount) => {
+  console.log(playersCount);
+  onlinePlayer.value  = playersCount}
+);
 
 onMounted(() => {
   const canvasElement = canvas.value as unknown as HTMLCanvasElement;
@@ -51,7 +55,7 @@ function changeColor(){
 </script>
 
 <template>
-  <h1 class="title"> Jauge War </h1>
+  <h1 class="title"> Jauge War <span>Joueur·euse en ligne: {{onlinePlayer}}</span></h1>
   <canvas ref="canvas" width="500" height="500"></canvas>
   <div class="btns-container">
     <button class="increase-btn" :style="background(topColor)" @click="increaseColor('top-color')">+1</button>
@@ -63,7 +67,14 @@ function changeColor(){
 <style scoped>
 
 h1.title {
+  display: flex;
+  flex-direction: column;
   color: white;
+}
+
+.title span {
+  font-style: italic;
+  font-size: 0.5em;
 }
 
 .increase-btn {

@@ -28,12 +28,16 @@ const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()}
 // Start the app by listening on the default Heroku port
 
 const jaugeWarState = {topColor: 250, bottomColor: 250, colors: colors};
-
+let playersCount = 0;
 
 io.on('connection', (socket) => {
     console.log('a user connected');
+    playersCount++;
+    io.emit("players-count", playersCount);
     io.emit('jauge-war-state', jaugeWarState);
     socket.on('disconnect', () => {
+        playersCount--;
+        io.emit("players-count", playersCount);
         console.log('user disconnected');
     });
 
