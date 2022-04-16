@@ -13,10 +13,21 @@ const io = new Server(server, {
     }
 });
 
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+
+const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 
 // Start the app by listening on the default Heroku port
 
-const jaugeWarState = {topColor: 250, bottomColor: 250};
+const jaugeWarState = {topColor: 250, bottomColor: 250, colors: colors};
 
 
 io.on('connection', (socket) => {
@@ -36,4 +47,10 @@ io.on('connection', (socket) => {
         }
         io.emit('jauge-war-state', jaugeWarState);
     });
+
+    socket.on('change-color', () => {
+        jaugeWarState.colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
+        io.emit('jauge-war-state', jaugeWarState);
+    })
+
 })
