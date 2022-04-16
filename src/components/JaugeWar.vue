@@ -218,4 +218,21 @@ canvas {
 }
 
 
+@media (max-width: 480px) {
+
+  .meta-info {
+    margin-top: 12px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .meta-info > * {
+    margin-top: 12px;
+    width: 80%;
+  }
+}
+
 </style>
