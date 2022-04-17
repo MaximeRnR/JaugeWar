@@ -11,35 +11,45 @@ const onlinePlayersRef = ref(new Array<{user:string, clics: number}>());
 const userClicks = ref(0);
 const inputUserName = ref(null);
 const goButton = ref(null);
+
+
+let username = ref<string | null>(null);
 let topColor = ref("#25A851");
 let bottomColor = ref("#A8201D");
-let username = ref<string | null>(null);
-
 let currentJaugeWarState: {topColor: number, bottomColor: number};
+
 let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.8;
 const height = 500;
 
 const socket = io(HOST);
 
+const COLOR_CHANGED_EVENT = 'color-changed';
+const ONLINE_PLAYERS_EVENT = 'online-players';
+const PLAYERS_COUNT_EVENT = "players-count";
+const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
 
-socket.on('jauge-war-state', function (jaugeWarState: {topColor: number, bottomColor: number}) {
+const JAUGE_ACTION = 'jauge-action';
+const CHANGE_COLOR_ACTION = "change-color";
+const PLAYER_USERNAME_ACTION = 'player-username';
+
+socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: {topColor: number, bottomColor: number}) {
   currentJaugeWarState = jaugeWarState;
   draw();
 });
 
-socket.on('color-changed', function(colors: {topColorHex: string, bottomColorHex: string}) {
+socket.on(COLOR_CHANGED_EVENT, function(colors: {topColorHex: string, bottomColorHex: string}) {
   topColor.value = colors.topColorHex;
   bottomColor.value = colors.bottomColorHex;
   draw();
 })
 
-socket.on('players-count', (playersCount) => {
+socket.on(PLAYERS_COUNT_EVENT, (playersCount) => {
       onlinePlayerCount.value = playersCount
     }
 );
 
-socket.on('online-players', (onlinePlayersWithClics: {user: string, clics: number}[]) => {
+socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: {user: string, clics: number}[]) => {
   userClicks.value = onlinePlayersWithClics?.filter(x => x.user === username.value)[0]?.clics ?? undefined;
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a,b) => b.clics - a.clics);
 })
@@ -51,8 +61,8 @@ onMounted(() => {
   canvasElement.height = height;
   if (localStorage.jaugeWarUsername) {
     username.value = localStorage.jaugeWarUsername;
-    socket.emit('player-username', username.value);
-    socket.emit('jauge-action', {action: ``, username: username.value});
+    socket.emit(PLAYER_USERNAME_ACTION, username.value);
+    socket.emit(JAUGE_ACTION, {action: ``, username: username.value});
   }
 });
 
@@ -67,15 +77,12 @@ function draw() {
 }
 
 function increaseColor(color: string) {
-  socket.emit('jauge-action', {action: `increase ${color}`, username: username.value});
+  socket.emit(JAUGE_ACTION, {action: `increase ${color}`, username: username.value});
 }
 
-function background(color: string) {
-  return `background: ${color}`;
-}
 
 function changeColor() {
-  socket.emit("change-color", username.value);
+  socket.emit(CHANGE_COLOR_ACTION, username.value);
   const btnElement = changeColorBtn.value as unknown as HTMLButtonElement;
   btnElement.disabled = true;
   setTimeout(() => btnElement.disabled = false, 60000);
@@ -88,7 +95,12 @@ function registerUsername() {
   }
   localStorage.jaugeWarUsername = inputUserNameElement.value;
   username.value = localStorage.jaugeWarUsername;
-  socket.emit('player-username', username.value);
+  socket.emit(PLAYER_USERNAME_ACTION, username.value);
+}
+
+
+function background(color: string) {
+  return `background: ${color}`;
 }
 </script>
 

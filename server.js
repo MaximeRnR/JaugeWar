@@ -30,22 +30,28 @@ const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()}
 const jaugeWarState = {topColor: 250, bottomColor: 250};
 let playersCount = 0;
 const registeredPlayer = new Map();
+
 function registeredPlayersToList(){
     return [...registeredPlayer.entries()].map(x => {return {user: x[0], clics: x[1]}});
 }
+
+const COLOR_CHANGED_EVENT = 'color-changed';
+const ONLINE_PLAYERS_EVENT = 'online-players';
+const PLAYERS_COUNT_EVENT = "players-count";
+const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
 
 io.on('connection', (socket) => {
     console.log('a user connected');
     playersCount++;
 
-    io.emit('color-changed', colors);
-    io.emit('online-players', registeredPlayersToList() ?? []);
-    io.emit("players-count", playersCount);
-    io.emit('jauge-war-state', jaugeWarState);
+    io.emit(COLOR_CHANGED_EVENT, colors);
+    io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList() ?? []);
+    io.emit(PLAYERS_COUNT_EVENT, playersCount);
+    io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
 
     socket.on('disconnect', () => {
         playersCount--;
-        io.emit("players-count", playersCount);
+        io.emit(PLAYERS_COUNT_EVENT, playersCount);
         console.log('user disconnected');
     });
 
@@ -64,15 +70,15 @@ io.on('connection', (socket) => {
                 registeredPlayer.set(action.username, registeredPlayer.get(action.username) + 1 );
             }
         }
-        io.emit('jauge-war-state', jaugeWarState);
-        io.emit('online-players', registeredPlayersToList());
-        io.emit('color-changed', colors);
+        io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
+        io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
+        io.emit(COLOR_CHANGED_EVENT, colors);
     });
 
     socket.on('change-color', () => {
         colors.topColorHex = getRandomColor();
         colors.bottomColorHex =  getRandomColor();
-        io.emit('color-changed', colors);
+        io.emit(COLOR_CHANGED_EVENT, colors);
     });
 
     socket.on('player-username', (username) => {
@@ -80,9 +86,9 @@ io.on('connection', (socket) => {
           return;
         }
         registeredPlayer.set(username, 0);
-        io.emit('jauge-war-state', jaugeWarState);
-        io.emit('online-players', registeredPlayersToList());
-        io.emit('color-changed', colors);
+        io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
+        io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
+        io.emit(COLOR_CHANGED_EVENT, colors);
     })
 
 })
