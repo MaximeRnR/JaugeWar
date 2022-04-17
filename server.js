@@ -1,5 +1,6 @@
 const PORT = process.env.PORT || 3000;
 const path = require('path');
+const uuid = require('uuid');
 const express = require('express');
 const {Server} = require("socket.io");
 const server = express()
@@ -25,14 +26,12 @@ function getRandomColor() {
 
 const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 
-// Start the app by listening on the default Heroku port
-
 const jaugeWarState = {topColor: 250, bottomColor: 250};
 let playersCount = 0;
 const registeredPlayer = new Map();
 
 function registeredPlayersToList(){
-    return [...registeredPlayer.entries()].map(x => {return {user: x[0], clics: x[1]}});
+    return [...registeredPlayer.entries()].map(x => {return {uuid: x[0], user: x[1].username, clicks: x[1].clicks}});
 }
 
 const COLOR_CHANGED_EVENT = 'color-changed';
@@ -56,19 +55,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('jauge-action', (action) => {
+        console.log(action.uuid)
         if (action.action.indexOf('top-color') !== -1 && jaugeWarState.topColor < 500) {
             jaugeWarState.topColor++;
             jaugeWarState.bottomColor--;
-            if(registeredPlayer.has(action.username)){
-                registeredPlayer.set(action.username, registeredPlayer.get(action.username) + 1 );
-            }
+
         }
         if (action.action.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < 500) {
             jaugeWarState.bottomColor++;
             jaugeWarState.topColor--;
-            if(registeredPlayer.has(action.username)){
-                registeredPlayer.set(action.username, registeredPlayer.get(action.username) + 1 );
-            }
+        }
+        if(registeredPlayer.has(action.uuid)){
+            var updatedPlayer = registeredPlayer.get(action.uuid);
+            updatedPlayer.clicks += 1;
+            console.log(updatedPlayer);
+            registeredPlayer.set(action.uuid, updatedPlayer);
         }
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
         io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
@@ -81,11 +82,11 @@ io.on('connection', (socket) => {
         io.emit(COLOR_CHANGED_EVENT, colors);
     });
 
-    socket.on('player-username', (username) => {
-        if(registeredPlayer.has(username)){
+    socket.on('player-username', (ids) => {
+        if(registeredPlayer.has(ids.uuid)){
           return;
         }
-        registeredPlayer.set(username, 0);
+        registeredPlayer.set(ids.uuid, {username: ids.username, clicks: 0});
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
         io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
         io.emit(COLOR_CHANGED_EVENT, colors);

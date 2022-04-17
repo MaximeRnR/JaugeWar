@@ -2,17 +2,19 @@
 
 import {io} from "socket.io-client";
 import {onMounted, ref} from "vue";
+import {v4} from "uuid";
+
 
 const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
-const onlinePlayersRef = ref(new Array<{user:string, clics: number}>());
+const onlinePlayersRef = ref(new Array<{uuid: string, user:string, clicks: number}>());
 const userClicks = ref(0);
 const inputUserName = ref(null);
 const goButton = ref(null);
 
-
+let userUUID: string;
 let username = ref<string | null>(null);
 let topColor = ref("#25A851");
 let bottomColor = ref("#A8201D");
@@ -49,9 +51,9 @@ socket.on(PLAYERS_COUNT_EVENT, (playersCount) => {
     }
 );
 
-socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: {user: string, clics: number}[]) => {
-  userClicks.value = onlinePlayersWithClics?.filter(x => x.user === username.value)[0]?.clics ?? undefined;
-  onlinePlayersRef.value = onlinePlayersWithClics?.sort((a,b) => b.clics - a.clics);
+socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: {uuid: string, user: string, clicks: number}[]) => {
+  userClicks.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0]?.clicks ?? undefined;
+  onlinePlayersRef.value = onlinePlayersWithClics?.sort((a,b) => b.clicks - a.clicks);
 })
 
 onMounted(() => {
@@ -59,9 +61,10 @@ onMounted(() => {
   ctx = canvasElement.getContext("2d");
   canvasElement.width = width;
   canvasElement.height = height;
-  if (localStorage.jaugeWarUsername) {
+  if (localStorage.jaugeWarUUID && localStorage.jaugeWarUsername) {
     username.value = localStorage.jaugeWarUsername;
-    socket.emit(PLAYER_USERNAME_ACTION, username.value);
+    userUUID = localStorage.jaugeWarUUID;
+    socket.emit(PLAYER_USERNAME_ACTION, {uuid: localStorage.jaugeWarUUID, username: username.value});
     socket.emit(JAUGE_ACTION, {action: ``, username: username.value});
   }
 });
@@ -77,7 +80,7 @@ function draw() {
 }
 
 function increaseColor(color: string) {
-  socket.emit(JAUGE_ACTION, {action: `increase ${color}`, username: username.value});
+  socket.emit(JAUGE_ACTION, {action: `increase ${color}`, uuid: userUUID});
 }
 
 
@@ -94,8 +97,10 @@ function registerUsername() {
     return;
   }
   localStorage.jaugeWarUsername = inputUserNameElement.value;
+  localStorage.jaugeWarUUID = v4();
+  userUUID = localStorage.jaugeWarUUID;
   username.value = localStorage.jaugeWarUsername;
-  socket.emit(PLAYER_USERNAME_ACTION, username.value);
+  socket.emit(PLAYER_USERNAME_ACTION, {uuid: userUUID, username: username.value});
 }
 
 
@@ -120,7 +125,7 @@ function background(color: string) {
     </div>
     <div class="players-list" v-if="onlinePlayersRef">
       <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
-      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{player.clics}}</span>
+      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{player.clicks}}</span>
     </div>
   </div>
 
