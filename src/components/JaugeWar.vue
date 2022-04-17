@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 import {io} from "socket.io-client";
-import {onMounted, reactive, ref} from "vue";
+import {onMounted, ref} from "vue";
 
 const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
@@ -13,31 +13,36 @@ const inputUserName = ref(null);
 const goButton = ref(null);
 let topColor = ref("#25A851");
 let bottomColor = ref("#A8201D");
-let username = ref(null);
+let username = ref<string | null>(null);
 
-
+let currentJaugeWarState: {topColor: number, bottomColor: number};
 let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.8;
 const height = 500;
 
 const socket = io(HOST);
-socket.on('jauge-war-state', function (jaugeWarState: { state: any, onlinePlayers: {user:string, clics: number}[] }) {
-  if (ctx) {
-    topColor.value = jaugeWarState.state.colors.topColorHex;
-    bottomColor.value = jaugeWarState.state.colors.bottomColorHex;
-    ctx!.fillStyle = jaugeWarState.state.colors.topColorHex;
-    ctx!.fillRect(0, 0, width, jaugeWarState.state.topColor);
-    ctx!.fillStyle = jaugeWarState.state.colors.bottomColorHex;
-    ctx!.fillRect(0, 500 - jaugeWarState.state.bottomColor, width, 500);
-  }
-  userClicks.value = jaugeWarState.onlinePlayers.filter(x => x.user === username.value)[0]?.clics ?? undefined;
-  onlinePlayersRef.value = jaugeWarState.onlinePlayers.sort((a,b) => b.clics - a.clics);
+
+
+socket.on('jauge-war-state', function (jaugeWarState: {topColor: number, bottomColor: number}) {
+  currentJaugeWarState = jaugeWarState;
+  draw();
 });
+
+socket.on('color-changed', function(colors: {topColorHex: string, bottomColorHex: string}) {
+  topColor.value = colors.topColorHex;
+  bottomColor.value = colors.bottomColorHex;
+  draw();
+})
 
 socket.on('players-count', (playersCount) => {
       onlinePlayerCount.value = playersCount
     }
 );
+
+socket.on('online-players', (onlinePlayersWithClics: {user: string, clics: number}[]) => {
+  userClicks.value = onlinePlayersWithClics?.filter(x => x.user === username.value)[0]?.clics ?? undefined;
+  onlinePlayersRef.value = onlinePlayersWithClics?.sort((a,b) => b.clics - a.clics);
+})
 
 onMounted(() => {
   const canvasElement = canvas.value as unknown as HTMLCanvasElement;
@@ -46,14 +51,20 @@ onMounted(() => {
   canvasElement.height = height;
   if (localStorage.jaugeWarUsername) {
     username.value = localStorage.jaugeWarUsername;
-    const goButtonElement = goButton.value as unknown as HTMLButtonElement;
-    goButtonElement.remove();
-    const inputUserNameElement = inputUserName.value as unknown as HTMLInputElement;
-    inputUserNameElement.remove();
     socket.emit('player-username', username.value);
     socket.emit('jauge-action', {action: ``, username: username.value});
   }
 });
+
+
+function draw() {
+  if (currentJaugeWarState && ctx) {
+    ctx!.fillStyle =  topColor.value
+    ctx!.fillRect(0, 0, width, currentJaugeWarState.topColor);
+    ctx!.fillStyle = bottomColor.value;
+    ctx!.fillRect(0, 500 - currentJaugeWarState.bottomColor, width, 500);
+  }
+}
 
 function increaseColor(color: string) {
   socket.emit('jauge-action', {action: `increase ${color}`, username: username.value});
@@ -65,7 +76,7 @@ function background(color: string) {
 
 function changeColor() {
   socket.emit("change-color", username.value);
-  var btnElement = changeColorBtn.value as unknown as HTMLButtonElement;
+  const btnElement = changeColorBtn.value as unknown as HTMLButtonElement;
   btnElement.disabled = true;
   setTimeout(() => btnElement.disabled = false, 60000);
 }
@@ -77,9 +88,6 @@ function registerUsername() {
   }
   localStorage.jaugeWarUsername = inputUserNameElement.value;
   username.value = localStorage.jaugeWarUsername;
-  const goButtonElement = goButton.value as unknown as HTMLButtonElement;
-  goButtonElement.remove();
-  inputUserNameElement.remove();
   socket.emit('player-username', username.value);
 }
 </script>
@@ -94,8 +102,8 @@ function registerUsername() {
   <div class="meta-info">
     <button ref="changeColorBtn" class="change-color" @click="changeColor()">Change colors</button>
     <div class="user-name-form">
-      <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
-      <button ref="goButton" @click="registerUsername()">GO</button>
+      <input v-if="!username" ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
+      <button v-if="!username" ref="goButton" @click="registerUsername()">GO</button>
       <span v-if="username">{{ username }} clicks : {{ userClicks }}</span>
     </div>
     <div class="players-list" v-if="onlinePlayersRef">
