@@ -9,7 +9,7 @@ const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
-const onlinePlayersRef = ref(new Array<{uuid: string, user:string, clicks: number}>());
+const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: number }>());
 const userClicks = ref(0);
 const inputUserName = ref(null);
 const goButton = ref(null);
@@ -18,8 +18,12 @@ let userUUID: string;
 let username = ref<string | null>(null);
 let topColor = ref("#25A851");
 let bottomColor = ref("#A8201D");
-let currentJaugeWarState: {topColor: number, bottomColor: number};
+let winningColorRef = ref<string>();
+let winnerRef = ref<string>();
+let timeRemainingRef = ref<number>();
+let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean };
 
+let gameIsFinished = ref<boolean>(false);
 let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.8;
 const height = 500;
@@ -30,17 +34,19 @@ const COLOR_CHANGED_EVENT = 'color-changed';
 const ONLINE_PLAYERS_EVENT = 'online-players';
 const PLAYERS_COUNT_EVENT = "players-count";
 const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
+const VICTORY_EVENT = 'victory';
 
 const JAUGE_ACTION = 'jauge-action';
 const CHANGE_COLOR_ACTION = "change-color";
 const PLAYER_USERNAME_ACTION = 'player-username';
 
-socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: {topColor: number, bottomColor: number}) {
+socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: { topColor: number, bottomColor: number, finished: boolean }) {
   currentJaugeWarState = jaugeWarState;
+  gameIsFinished.value = jaugeWarState.finished;
   draw();
 });
 
-socket.on(COLOR_CHANGED_EVENT, function(colors: {topColorHex: string, bottomColorHex: string}) {
+socket.on(COLOR_CHANGED_EVENT, function (colors: { topColorHex: string, bottomColorHex: string }) {
   topColor.value = colors.topColorHex;
   bottomColor.value = colors.bottomColorHex;
   draw();
@@ -51,9 +57,27 @@ socket.on(PLAYERS_COUNT_EVENT, (playersCount) => {
     }
 );
 
-socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: {uuid: string, user: string, clicks: number}[]) => {
+socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: string, clicks: number }[]) => {
   userClicks.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0]?.clicks ?? undefined;
-  onlinePlayersRef.value = onlinePlayersWithClics?.sort((a,b) => b.clicks - a.clicks);
+  onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
+})
+
+socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, winner: string}) => {
+  winningColorRef.value = victoryEvent.winningColor;
+  winnerRef.value = victoryEvent.winner;
+  if (victoryEvent.victoryTime) {
+    const newGameStartDate = new Date(Date.parse(victoryEvent.victoryTime));
+    newGameStartDate.setSeconds(newGameStartDate.getSeconds() + 30);
+      const timeBeforeNewGame = setInterval(() => {
+      const now = new Date().getTime();
+      const timeRemaining = newGameStartDate.getTime() - now;
+      timeRemainingRef.value = Math.floor((timeRemaining % (1000 * 60)) / (1000));
+      if (timeRemaining <= 0) {
+        clearInterval(timeBeforeNewGame);
+      }
+    }, 1000)
+  }
+
 })
 
 onMounted(() => {
@@ -72,7 +96,7 @@ onMounted(() => {
 
 function draw() {
   if (currentJaugeWarState && ctx) {
-    ctx!.fillStyle =  topColor.value
+    ctx!.fillStyle = topColor.value
     ctx!.fillRect(0, 0, width, currentJaugeWarState.topColor);
     ctx!.fillStyle = bottomColor.value;
     ctx!.fillRect(0, 500 - currentJaugeWarState.bottomColor, width, 500);
@@ -110,14 +134,15 @@ function background(color: string) {
 </script>
 
 <template>
-  <h1 class="title"> Jauge War  </h1>
+  <h1 class="title"> Jauge War </h1>
   <canvas ref="canvas" width="500" height="500"></canvas>
   <div class="btns-container">
     <button class="increase-btn" :style="background(topColor)" @click="increaseColor('top-color')">+1</button>
     <button class="increase-btn" :style="background(bottomColor)" @click="increaseColor('bottom-color')">+1</button>
   </div>
   <div class="meta-info">
-    <button ref="changeColorBtn" class="change-color" @click="changeColor()">Change colors</button>
+    <button ref="changeColorBtn" class="change-color" :disabled="winningColorRef" @click="changeColor()">Change colors
+    </button>
     <div class="user-name-form">
       <input v-if="!username" ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
       <button v-if="!username" ref="goButton" @click="registerUsername()">GO</button>
@@ -125,10 +150,14 @@ function background(color: string) {
     </div>
     <div class="players-list" v-if="onlinePlayersRef">
       <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
-      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{player.clicks}}</span>
+      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{ player.clicks }}</span>
     </div>
   </div>
-
+  <div v-if="gameIsFinished" :style="background(winningColorRef)" class="victory-popup">
+    <span>Victoire de {{ winningColorRef }} !</span>
+    <span>Gagnant·e : {{ winnerRef }}</span>
+    <span>Prochaine partie dans {{ timeRemainingRef }}s !</span>
+  </div>
 </template>
 
 <style scoped>
@@ -243,6 +272,27 @@ canvas {
 }
 
 
+.victory-popup {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 50%;
+  height: 50%;
+  top: 20%;
+  justify-content: center;
+  align-items: center;
+  border-radius: 18px;
+  border: 1px white solid;
+  color: white;
+  font-size: 2em;
+  font-weight: bold;
+}
+
+
+.victory-popup span {
+  text-align: center;
+}
+
 @media (max-width: 480px) {
 
   .meta-info {
@@ -256,6 +306,10 @@ canvas {
 
   .meta-info > * {
     margin-top: 12px;
+    width: 80%;
+  }
+
+  .victory-popup {
     width: 80%;
   }
 }
