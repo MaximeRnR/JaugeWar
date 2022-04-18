@@ -128,7 +128,7 @@ function registerUsername() {
 }
 
 
-function background(color: string) {
+function background(color: string | undefined) {
   return `background: ${color}`;
 }
 </script>
@@ -141,7 +141,7 @@ function background(color: string) {
     <button class="increase-btn" :style="background(bottomColor)" @click="increaseColor('bottom-color')">+1</button>
   </div>
   <div class="meta-info">
-    <button ref="changeColorBtn" class="change-color" :disabled="winningColorRef" @click="changeColor()">Change colors
+    <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
     </button>
     <div class="user-name-form">
       <input v-if="!username" ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
