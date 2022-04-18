@@ -3,6 +3,8 @@
 import {io} from "socket.io-client";
 import {onMounted, ref} from "vue";
 import {v4} from "uuid";
+import {fromEvent, useObservable} from "@vueuse/rxjs";
+import {interval, map, throttle} from "rxjs";
 
 
 const HOST = location.origin.replace(/^http/, 'ws')
@@ -13,6 +15,8 @@ const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: num
 const userClicks = ref(0);
 const inputUserName = ref(null);
 const goButton = ref(null);
+const top = ref();
+const bottom = ref();
 
 let userUUID: string;
 let username = ref<string | null>(null);
@@ -103,10 +107,23 @@ function draw() {
   }
 }
 
-function increaseColor(color: string) {
-  socket.emit(JAUGE_ACTION, {action: `increase ${color}`, uuid: userUUID});
-}
+const topClick = useObservable(
+    fromEvent(top, 'click').pipe(
+        throttle(() => interval(100)),
+        map(() => {
+          socket.emit(JAUGE_ACTION, {action: `increase top-color`, uuid: userUUID});
+        })
+    )
+);
 
+const bottomClick = useObservable(
+    fromEvent(bottom, 'click').pipe(
+        throttle(() => interval(100)),
+        map(() => {
+          socket.emit(JAUGE_ACTION, {action: `increase bottom-color`, uuid: userUUID});
+        })
+    )
+);
 
 function changeColor() {
   socket.emit(CHANGE_COLOR_ACTION, username.value);
@@ -137,8 +154,8 @@ function background(color: string | undefined) {
   <h1 class="title"> Jauge War </h1>
   <canvas ref="canvas" width="500" height="500"></canvas>
   <div class="btns-container">
-    <button class="increase-btn" :style="background(topColor)" @click="increaseColor('top-color')">+1</button>
-    <button class="increase-btn" :style="background(bottomColor)" @click="increaseColor('bottom-color')">+1</button>
+    <button ref="top" class="increase-btn" :style="background(topColor)">+1</button>
+    <button ref="bottom" class="increase-btn" :style="background(bottomColor)">+1</button>
   </div>
   <div class="meta-info">
     <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
