@@ -26,7 +26,7 @@ function getRandomColor() {
 
 const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 
-const jaugeWarState = {topColor: 250, bottomColor: 250, finished: false};
+const jaugeWarState = {topColor: 250, bottomColor: 250, finished: false, direction: ''};
 let playersCount = 0;
 const registeredPlayer = new Map();
 
@@ -82,11 +82,13 @@ io.on('connection', (socket) => {
         if (action.action.indexOf('top-color') !== -1 && jaugeWarState.topColor < MAX_COLOR_VALUE) {
             jaugeWarState.topColor++;
             jaugeWarState.bottomColor--;
+            jaugeWarState.direction = 'down';
 
         }
         if (action.action.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < MAX_COLOR_VALUE) {
             jaugeWarState.bottomColor++;
             jaugeWarState.topColor--;
+            jaugeWarState.direction = 'up';
         }
         if (registeredPlayer.has(action.uuid) && (jaugeWarState.topColor < MAX_COLOR_VALUE || jaugeWarState.bottomColor < MAX_COLOR_VALUE)) {
             var updatedPlayer = registeredPlayer.get(action.uuid);

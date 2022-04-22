@@ -6,9 +6,13 @@ import {v4} from "uuid";
 import {fromEvent, useObservable} from "@vueuse/rxjs";
 import {interval, map, throttle} from "rxjs";
 
+import arrowDown from '../assets/white-down-arrow.png';
+import arrowUp from '../assets/white-up-arrow.png';
+
 
 const HOST = location.origin.replace(/^http/, 'ws')
 const canvas = ref(null);
+const canvasShadow = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
 const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: number }>());
@@ -25,7 +29,7 @@ let bottomColor = ref("#A8201D");
 let winningColorRef = ref<string>();
 let winnerRef = ref<string>();
 let timeRemainingRef = ref<number>();
-let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean };
+let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string};
 
 let gameIsFinished = ref<boolean>(false);
 let ctx: CanvasRenderingContext2D | null;
@@ -44,10 +48,13 @@ const JAUGE_ACTION = 'jauge-action';
 const CHANGE_COLOR_ACTION = "change-color";
 const PLAYER_USERNAME_ACTION = 'player-username';
 
-socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: { topColor: number, bottomColor: number, finished: boolean }) {
+const THROTTLE_DELAY = 100;
+
+socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string }) {
   currentJaugeWarState = jaugeWarState;
   gameIsFinished.value = jaugeWarState.finished;
   draw();
+  drawArrow(jaugeWarState.direction);
 });
 
 socket.on(COLOR_CHANGED_EVENT, function (colors: { topColorHex: string, bottomColorHex: string }) {
@@ -66,13 +73,13 @@ socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: s
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
 })
 
-socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, winner: string}) => {
+socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, winner: string }) => {
   winningColorRef.value = victoryEvent.winningColor;
   winnerRef.value = victoryEvent.winner;
   if (victoryEvent.victoryTime) {
     const newGameStartDate = new Date(Date.parse(victoryEvent.victoryTime));
     newGameStartDate.setSeconds(newGameStartDate.getSeconds() + 30);
-      const timeBeforeNewGame = setInterval(() => {
+    const timeBeforeNewGame = setInterval(() => {
       const now = new Date().getTime();
       const timeRemaining = newGameStartDate.getTime() - now;
       timeRemainingRef.value = Math.floor((timeRemaining % (1000 * 60)) / (1000));
@@ -89,6 +96,10 @@ onMounted(() => {
   ctx = canvasElement.getContext("2d");
   canvasElement.width = width;
   canvasElement.height = height;
+  const canvasShadowElement = canvasShadow.value as unknown as HTMLElement;
+  canvasShadowElement.style.width =  width + 'px';
+  canvasShadowElement.style.height = height + 'px';
+  canvasShadowElement.style.top = canvasElement.getBoundingClientRect().top + 'px';
   if (localStorage.jaugeWarUUID && localStorage.jaugeWarUsername) {
     username.value = localStorage.jaugeWarUsername;
     userUUID = localStorage.jaugeWarUUID;
@@ -107,9 +118,30 @@ function draw() {
   }
 }
 
+
+
+function drawArrow(direction: string) {
+  const canvasShadowElement = canvasShadow.value as unknown as HTMLCanvasElement;
+  const arrowElement = document.createElement('img');
+  arrowElement.src = direction === 'down' ? arrowDown : arrowUp;
+  arrowElement.classList.add('arrow-element');
+  if(direction === 'down'){
+    arrowElement.style.top = Math.floor(Math.random() * currentJaugeWarState.topColor) + 'px';
+  }
+  if(direction === 'up'){
+    arrowElement.style.bottom = Math.floor(Math.random() * currentJaugeWarState.bottomColor) + 'px'
+  }
+  arrowElement.style.left = Math.floor(Math.random() * width) + 'px';
+  arrowElement.classList.add('fading-animation');
+  canvasShadowElement.append(arrowElement);
+  setTimeout(() => {
+    arrowElement.remove();
+  }, 1000);
+}
+
 const topClick = useObservable(
     fromEvent(top, 'click').pipe(
-        throttle(() => interval(100)),
+        throttle(() => interval(THROTTLE_DELAY)),
         map(() => {
           socket.emit(JAUGE_ACTION, {action: `increase top-color`, uuid: userUUID});
         })
@@ -118,7 +150,9 @@ const topClick = useObservable(
 
 const bottomClick = useObservable(
     fromEvent(bottom, 'click').pipe(
-        throttle(() => interval(100)),
+        throttle(() => {
+          return interval(THROTTLE_DELAY);
+        }),
         map(() => {
           socket.emit(JAUGE_ACTION, {action: `increase bottom-color`, uuid: userUUID});
         })
@@ -151,8 +185,11 @@ function background(color: string | undefined) {
 </script>
 
 <template>
-  <h1 class="title"> Jauge War </h1>
+  <h1 class="title"> Jauge War
+    <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
+  </h1>
   <canvas ref="canvas" width="500" height="500"></canvas>
+  <div ref="canvasShadow" class="canvas-shadow"></div>
   <div class="btns-container">
     <button ref="top" class="increase-btn" :style="background(topColor)">+1</button>
     <button ref="bottom" class="increase-btn" :style="background(bottomColor)">+1</button>
@@ -166,7 +203,6 @@ function background(color: string | undefined) {
       <span v-if="username">{{ username }} clicks : {{ userClicks }}</span>
     </div>
     <div class="players-list" v-if="onlinePlayersRef">
-      <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
       <span v-for="player in onlinePlayersRef">{{ player.user }} - {{ player.clicks }}</span>
     </div>
   </div>
@@ -177,6 +213,29 @@ function background(color: string | undefined) {
   </div>
 </template>
 
+
+<style>
+
+
+.arrow-element {
+  position: absolute;
+}
+
+.fading-animation {
+  animation: fadeOut 1000ms ease-in-out;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+
+</style>
 <style scoped>
 
 h1.title {
@@ -223,8 +282,13 @@ h1.title {
 }
 
 canvas {
+  position: relative;
   border: 1px solid white;
   border-radius: 50px;
+}
+
+.canvas-shadow {
+  position: fixed;
 }
 
 .meta-info {
@@ -309,6 +373,7 @@ canvas {
 .victory-popup span {
   text-align: center;
 }
+
 
 @media (max-width: 480px) {
 
