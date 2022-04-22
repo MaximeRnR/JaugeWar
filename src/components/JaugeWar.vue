@@ -288,7 +288,7 @@ canvas {
 }
 
 .canvas-shadow {
-  position: fixed;
+  position: absolute;
 }
 
 .meta-info {
