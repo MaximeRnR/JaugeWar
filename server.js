@@ -32,7 +32,7 @@ const registeredPlayer = new Map();
 
 function registeredPlayersToList() {
     return [...registeredPlayer.entries()].map(x => {
-        return {uuid: x[0], user: x[1].username, clicks: x[1].clicks}
+        return {uuid: x[0], user: x[1].username, clicks: x[1].clicks, activeBonuses: x[1].activeBonuses}
     });
 }
 
@@ -48,6 +48,11 @@ const MAX_COLOR_VALUE = 500;
 let victoryTime;
 let previousWinner;
 
+
+const bonuses = [
+    {id: 0, lineMultiplier: 2, cost: 10, duration: 10000},
+    {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
+];
 
 io.on('connection', (socket) => {
     console.log('a user connected');
@@ -79,15 +84,18 @@ io.on('connection', (socket) => {
             io.emit(COLOR_CHANGED_EVENT, colors);
             return;
         }
+        const playerModifier = registeredPlayer.get(action.uuid)?.activeBonuses
+            .map(b => b.lineMultiplier)
+            .reduce((b1,b2) => b1 * b2, 1) ?? 1;
         if (action.action.indexOf('top-color') !== -1 && jaugeWarState.topColor < MAX_COLOR_VALUE) {
-            jaugeWarState.topColor++;
-            jaugeWarState.bottomColor--;
+            jaugeWarState.topColor += (1 * playerModifier);
+            jaugeWarState.bottomColor -= (1 * playerModifier);
             jaugeWarState.direction = 'down';
 
         }
         if (action.action.indexOf('bottom-color') !== -1 && jaugeWarState.bottomColor < MAX_COLOR_VALUE) {
-            jaugeWarState.bottomColor++;
-            jaugeWarState.topColor--;
+            jaugeWarState.bottomColor += (1 * playerModifier);
+            jaugeWarState.topColor -= (1 * playerModifier);
             jaugeWarState.direction = 'up';
         }
         if (registeredPlayer.has(action.uuid) && (jaugeWarState.topColor < MAX_COLOR_VALUE || jaugeWarState.bottomColor < MAX_COLOR_VALUE)) {
@@ -95,13 +103,13 @@ io.on('connection', (socket) => {
             updatedPlayer.clicks += 1;
             registeredPlayer.set(action.uuid, updatedPlayer);
         }
-        if (jaugeWarState.topColor === MAX_COLOR_VALUE || jaugeWarState.bottomColor === MAX_COLOR_VALUE) {
+        if (jaugeWarState.topColor >= MAX_COLOR_VALUE || jaugeWarState.bottomColor >= MAX_COLOR_VALUE) {
             victoryTime = new Date();
             previousWinner = registeredPlayer.get(action.uuid)?.username ?? 'Non identifié·e';
             io.emit(VICTORY_EVENT, {
                 winningColor:
                     jaugeWarState
-                        .topColor === MAX_COLOR_VALUE ? colors.topColorHex : colors.bottomColorHex,
+                        .topColor >= MAX_COLOR_VALUE ? colors.topColorHex : colors.bottomColorHex,
                 victoryTime: victoryTime,
                 winner: previousWinner
             });
@@ -134,10 +142,27 @@ io.on('connection', (socket) => {
         if (registeredPlayer.has(ids.uuid)) {
             return;
         }
-        registeredPlayer.set(ids.uuid, {username: ids.username, clicks: 0});
+        registeredPlayer.set(ids.uuid, {username: ids.username, clicks: 0, activeBonuses: []});
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
         io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
         io.emit(COLOR_CHANGED_EVENT, colors);
+    });
+
+
+    socket.on('bonus-bought', (bonusPayload) => {
+        const player = registeredPlayer.get(bonusPayload.uuid);
+        const bonus = bonuses.filter(b => b.id === bonusPayload.bonusId)[0];
+        if(player && bonus && player.clicks >= bonus.cost && player.activeBonuses.filter(b => b.id === bonusPayload.bonusId).length === 0){
+            const lengthOfBonuses = player.activeBonuses.push(bonus);
+            player.clicks -= bonus.cost;
+            registeredPlayer.set(bonusPayload.uuid, player);
+            setTimeout(() => {
+                player.activeBonuses.splice(lengthOfBonuses - 1, 1);
+                registeredPlayer.set(bonusPayload.uuid, player);
+            }, bonus.duration);
+            io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
+        }
+
     })
 
 })

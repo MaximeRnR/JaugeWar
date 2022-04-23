@@ -48,7 +48,12 @@ const JAUGE_ACTION = 'jauge-action';
 const CHANGE_COLOR_ACTION = "change-color";
 const PLAYER_USERNAME_ACTION = 'player-username';
 
-const THROTTLE_DELAY = 100;
+const THROTTLE_DELAY = 1;
+
+const bonuses = [
+  {id: 0, label: 'Clicks x 2 ', cost: 10, duration: 10000},
+  {id: 1, label: 'Clicks x 5', cost: 50, duration: 5000}
+];
 
 socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string }) {
   currentJaugeWarState = jaugeWarState;
@@ -159,6 +164,16 @@ const bottomClick = useObservable(
     )
 );
 
+function buyBonus(bonus: any, event: any){
+  socket.emit('bonus-bought', {uuid: userUUID, bonusId: bonus.id});
+  event.target.style.animation = `buttonBackgroundDecrease ${bonus.duration}ms ease-in`;
+  event.target.disabled = true;
+  setTimeout(() => {
+    event.target.disabled = false;
+    event.target.style.animation = `none`;
+  }, bonus.duration);
+}
+
 function changeColor() {
   socket.emit(CHANGE_COLOR_ACTION, username.value);
   const btnElement = changeColorBtn.value as unknown as HTMLButtonElement;
@@ -202,6 +217,9 @@ function background(color: string | undefined) {
       <button v-if="!username" ref="goButton" @click="registerUsername()">GO</button>
       <span v-if="username">{{ username }} clicks : {{ userClicks }}</span>
     </div>
+    <div class="shop">
+      <button v-for="bonus in bonuses" @click="buyBonus(bonus, $event)">{{bonus.label}} - {{bonus.cost}} {{bonus.duration}}ms</button>
+    </div>
     <div class="players-list" v-if="onlinePlayersRef">
       <span v-for="player in onlinePlayersRef">{{ player.user }} - {{ player.clicks }}</span>
     </div>
@@ -234,6 +252,14 @@ function background(color: string | undefined) {
   }
 }
 
+@keyframes buttonBackgroundDecrease {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
 
 </style>
 <style scoped>
@@ -300,7 +326,7 @@ canvas {
 }
 
 .change-color {
-  width: 30%;
+  width: 10%;
   height: 30px;
   border-radius: 10px;
   border: none;
@@ -309,7 +335,7 @@ canvas {
 
 .user-name-form {
   display: flex;
-  width: 30%;
+  width: 20%;
   justify-content: center;
   align-items: flex-start;
 }
@@ -374,6 +400,24 @@ canvas {
   text-align: center;
 }
 
+.shop {
+  width: 30%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.shop button {
+  width: 100%;
+  border-radius: 12px;
+  border: none;
+  margin-top: 4px;
+  text-wrap: none;
+  overflow: hidden;
+  word-break: keep-all;
+  white-space: nowrap;
+}
 
 @media (max-width: 480px) {
 
