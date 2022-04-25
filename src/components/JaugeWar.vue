@@ -8,6 +8,9 @@ import {interval, map, throttle} from 'rxjs';
 
 import arrowDown from '../assets/white-down-arrow.png';
 import arrowUp from '../assets/white-up-arrow.png';
+import github from '../assets/github.png';
+import twitter from '../assets/twitter-logo.png';
+import jwlogo from '../assets/jwlogo.png';
 
 
 const HOST = location.origin.replace(/^http/, 'ws');
@@ -65,6 +68,8 @@ socket.on(JAUGE_WAR_STATE_EVENT, function(jaugeWarState: { topColor: number, bot
 socket.on(COLOR_CHANGED_EVENT, function(colors: { topColorHex: string, bottomColorHex: string }) {
   topColor.value = colors.topColorHex;
   bottomColor.value = colors.bottomColorHex;
+  document.querySelector('body')!.style.background = `linear-gradient(-45deg, ${topColor.value}, ${bottomColor.value})`;
+  document.querySelector('body')!.style.backgroundSize = '200% 200%';
   draw();
 });
 
@@ -196,9 +201,14 @@ function background(color: string | undefined) {
 </script>
 
 <template>
-  <h1 class="title"> Jauge War
+  <h1 class="title">
+    <img :src="jwlogo" alt="Jauge War"/>
     <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
   </h1>
+  <div class="network">
+    <a href="https://github.com/MaximeRnR/JaugeWar" title="Source code" target="_blank" rel="noopener"><img alt="github logo" :src="github"/></a>
+    <a href="https://twitter.com/MrMasquime" title="@MrMasquime" target="_blank" rel="noopener"><img alt="twitter logo" :src="twitter"/></a>
+  </div>
   <div class="play-area">
     <canvas ref="canvas" width="500" height="500"></canvas>
     <div ref="canvasShadow" class="canvas-shadow"></div>
@@ -237,7 +247,6 @@ function background(color: string | undefined) {
 
 
 <style>
-
 
 .arrow-element {
   position: absolute;
@@ -300,6 +309,10 @@ h1.title {
   display: flex;
   flex-direction: column;
   color: white;
+}
+
+h1.title img {
+  height: 70px;
 }
 
 h1.title span {
@@ -506,6 +519,24 @@ canvas {
 
 .victory-popup span {
   text-align: center;
+}
+
+.network {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 12px;
+}
+
+.network a {
+  margin: 4px;
+  height: 25px;
+  width: 25px;
+}
+
+.network img {
+  height: 25px;
+  width: 25px;
 }
 
 
