@@ -1,16 +1,16 @@
 <script setup lang="ts">
 
-import {io} from "socket.io-client";
-import {onMounted, ref} from "vue";
-import {v4} from "uuid";
-import {fromEvent, useObservable} from "@vueuse/rxjs";
-import {interval, map, throttle} from "rxjs";
+import {io} from 'socket.io-client';
+import {onMounted, ref} from 'vue';
+import {v4} from 'uuid';
+import {fromEvent, useObservable} from '@vueuse/rxjs';
+import {interval, map, throttle} from 'rxjs';
 
 import arrowDown from '../assets/white-down-arrow.png';
 import arrowUp from '../assets/white-up-arrow.png';
 
 
-const HOST = location.origin.replace(/^http/, 'ws')
+const HOST = location.origin.replace(/^http/, 'ws');
 const canvas = ref(null);
 const canvasShadow = ref(null);
 const changeColorBtn = ref(null);
@@ -24,59 +24,59 @@ const bottom = ref();
 
 let userUUID: string;
 let username = ref<string | null>(null);
-let topColor = ref("#25A851");
-let bottomColor = ref("#A8201D");
+let topColor = ref('#25A851');
+let bottomColor = ref('#A8201D');
 let winningColorRef = ref<string>();
 let winnerRef = ref<string>();
 let timeRemainingRef = ref<number>();
-let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string};
+let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string };
 
 let gameIsFinished = ref<boolean>(false);
 let ctx: CanvasRenderingContext2D | null;
-const width = window.innerWidth * 0.8;
+const width = window.innerWidth * 0.3;
 const height = 500;
 
 const socket = io(HOST);
 
 const COLOR_CHANGED_EVENT = 'color-changed';
 const ONLINE_PLAYERS_EVENT = 'online-players';
-const PLAYERS_COUNT_EVENT = "players-count";
+const PLAYERS_COUNT_EVENT = 'players-count';
 const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
 const VICTORY_EVENT = 'victory';
 
 const JAUGE_ACTION = 'jauge-action';
-const CHANGE_COLOR_ACTION = "change-color";
+const CHANGE_COLOR_ACTION = 'change-color';
 const PLAYER_USERNAME_ACTION = 'player-username';
 
-const THROTTLE_DELAY = 1;
+const THROTTLE_DELAY = 100;
 
 const bonuses = [
-  {id: 0, label: 'Clicks x 2 ', cost: 10, duration: 10000},
-  {id: 1, label: 'Clicks x 5', cost: 50, duration: 5000}
+  {id: 0, label: 'x2 - 10ck', cost: 10, duration: 10000},
+  {id: 1, label: 'x5 - 50ck', cost: 50, duration: 5000}
 ];
 
-socket.on(JAUGE_WAR_STATE_EVENT, function (jaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string }) {
+socket.on(JAUGE_WAR_STATE_EVENT, function(jaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string }) {
   currentJaugeWarState = jaugeWarState;
   gameIsFinished.value = jaugeWarState.finished;
   draw();
   drawArrow(jaugeWarState.direction);
 });
 
-socket.on(COLOR_CHANGED_EVENT, function (colors: { topColorHex: string, bottomColorHex: string }) {
+socket.on(COLOR_CHANGED_EVENT, function(colors: { topColorHex: string, bottomColorHex: string }) {
   topColor.value = colors.topColorHex;
   bottomColor.value = colors.bottomColorHex;
   draw();
-})
+});
 
-socket.on(PLAYERS_COUNT_EVENT, (playersCount) => {
-      onlinePlayerCount.value = playersCount
+socket.on(PLAYERS_COUNT_EVENT, (playersCount: number) => {
+      onlinePlayerCount.value = playersCount;
     }
 );
 
 socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: string, clicks: number }[]) => {
   userClicks.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0]?.clicks ?? undefined;
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
-})
+});
 
 socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, winner: string }) => {
   winningColorRef.value = victoryEvent.winningColor;
@@ -91,20 +91,19 @@ socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: str
       if (timeRemaining <= 0) {
         clearInterval(timeBeforeNewGame);
       }
-    }, 1000)
+    }, 1000);
   }
 
-})
+});
 
 onMounted(() => {
   const canvasElement = canvas.value as unknown as HTMLCanvasElement;
-  ctx = canvasElement.getContext("2d");
+  ctx = canvasElement.getContext('2d');
   canvasElement.width = width;
   canvasElement.height = height;
   const canvasShadowElement = canvasShadow.value as unknown as HTMLElement;
-  canvasShadowElement.style.width =  width + 'px';
+  canvasShadowElement.style.width = width + 'px';
   canvasShadowElement.style.height = height + 'px';
-  canvasShadowElement.style.top = canvasElement.getBoundingClientRect().top + 'px';
   if (localStorage.jaugeWarUUID && localStorage.jaugeWarUsername) {
     username.value = localStorage.jaugeWarUsername;
     userUUID = localStorage.jaugeWarUUID;
@@ -116,7 +115,7 @@ onMounted(() => {
 
 function draw() {
   if (currentJaugeWarState && ctx) {
-    ctx!.fillStyle = topColor.value
+    ctx!.fillStyle = topColor.value;
     ctx!.fillRect(0, 0, width, currentJaugeWarState.topColor);
     ctx!.fillStyle = bottomColor.value;
     ctx!.fillRect(0, 500 - currentJaugeWarState.bottomColor, width, 500);
@@ -124,17 +123,16 @@ function draw() {
 }
 
 
-
 function drawArrow(direction: string) {
   const canvasShadowElement = canvasShadow.value as unknown as HTMLCanvasElement;
   const arrowElement = document.createElement('img');
   arrowElement.src = direction === 'down' ? arrowDown : arrowUp;
   arrowElement.classList.add('arrow-element');
-  if(direction === 'down'){
+  if (direction === 'down') {
     arrowElement.style.top = Math.floor(Math.random() * currentJaugeWarState.topColor) + 'px';
   }
-  if(direction === 'up'){
-    arrowElement.style.bottom = Math.floor(Math.random() * currentJaugeWarState.bottomColor) + 'px'
+  if (direction === 'up') {
+    arrowElement.style.bottom = Math.floor(Math.random() * currentJaugeWarState.bottomColor) + 'px';
   }
   arrowElement.style.left = Math.floor(Math.random() * width) + 'px';
   arrowElement.classList.add('fading-animation');
@@ -164,12 +162,10 @@ const bottomClick = useObservable(
     )
 );
 
-function buyBonus(bonus: any, event: any){
+function buyBonus(bonus: any, event: any) {
   socket.emit('bonus-bought', {uuid: userUUID, bonusId: bonus.id});
   event.target.style.animation = `buttonBackgroundDecrease ${bonus.duration}ms ease-in`;
-  event.target.disabled = true;
   setTimeout(() => {
-    event.target.disabled = false;
     event.target.style.animation = `none`;
   }, bonus.duration);
 }
@@ -203,23 +199,31 @@ function background(color: string | undefined) {
   <h1 class="title"> Jauge War
     <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
   </h1>
-  <canvas ref="canvas" width="500" height="500"></canvas>
-  <div ref="canvasShadow" class="canvas-shadow"></div>
-  <div class="btns-container">
-    <button ref="top" class="increase-btn" :style="background(topColor)">+1</button>
-    <button ref="bottom" class="increase-btn" :style="background(bottomColor)">+1</button>
+  <div class="play-area">
+    <canvas ref="canvas" width="500" height="500"></canvas>
+    <div ref="canvasShadow" class="canvas-shadow"></div>
+    <div class="actions">
+      <div class="shop">
+        <div class="title">Bonus</div>
+        <div class="subtitle">Achetez des bonus en utilisant vos clicks cummulés !</div>
+        <div v-if="!username" class="user-name-form">
+          <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
+          <button ref="goButton" @click="registerUsername()">Inscris toi !</button>
+        </div>
+        <span class="user-clicks" v-if="username">{{ username }} clicks : {{ userClicks }}</span>
+        <div class="bonus-container">
+          <button class="bonus-btn" v-for="bonus in bonuses" :disabled="bonus.cost > userClicks" @click="buyBonus(bonus, $event)">{{ bonus.label }}</button>
+        </div>
+        </div>
+      <div class="btns-container">
+        <button ref="top" class="increase-btn" :style="background(topColor)">+1</button>
+        <button ref="bottom" class="increase-btn" :style="background(bottomColor)">+1</button>
+      </div>
+    </div>
   </div>
   <div class="meta-info">
     <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
     </button>
-    <div class="user-name-form">
-      <input v-if="!username" ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
-      <button v-if="!username" ref="goButton" @click="registerUsername()">GO</button>
-      <span v-if="username">{{ username }} clicks : {{ userClicks }}</span>
-    </div>
-    <div class="shop">
-      <button v-for="bonus in bonuses" @click="buyBonus(bonus, $event)">{{bonus.label}} - {{bonus.cost}} {{bonus.duration}}ms</button>
-    </div>
     <div class="players-list" v-if="onlinePlayersRef">
       <span v-for="player in onlinePlayersRef">{{ player.user }} - {{ player.clicks }}</span>
     </div>
@@ -254,10 +258,38 @@ function background(color: string | undefined) {
 
 @keyframes buttonBackgroundDecrease {
   0% {
-    width: 100%;
+    opacity: 1;
+  }
+  50%{
+    opacity: 1;
+  }
+  60% {
+    opacity: 0;
+  }
+  65% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0;
+  }
+  75% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0;
+  }
+  85% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0;
+  }
+  95% {
+    opacity: 1;
   }
   100% {
-    width: 0%;
+    opacity: 0;
+    width: 10%;
   }
 }
 
@@ -270,7 +302,7 @@ h1.title {
   color: white;
 }
 
-.title span {
+h1.title span {
   font-style: italic;
   font-size: 0.5em;
 }
@@ -285,9 +317,10 @@ h1.title {
   margin-top: 12px;
   width: 80%;
   display: flex;
-  justify-content: space-evenly;
+  justify-content: space-around;
   align-items: center;
   flex-direction: row;
+  height: 100%;
 }
 
 .btns-container button {
@@ -297,14 +330,85 @@ h1.title {
   cursor: pointer;
   color: white;
   outline: none;
-  height: 50px;
-  width: 45%;
+  height: 100%;
+  width: 50%;
   border: 2px solid white;
   touch-action: manipulation;
+  margin: 4px;
 }
 
 .btns-container button:active {
   border: none;
+}
+
+.play-area {
+  position: relative;
+  width: 80%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.actions {
+  position: relative;
+  width: 70%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+}
+
+.shop {
+  width: 80%;
+  font-size: 1.5em;
+}
+
+.shop .title {
+  font-weight: bold;
+}
+
+.shop .subtitle{
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+.shop .user-clicks {
+  font-weight: bold;
+}
+
+.shop .bonus-container {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.shop .bonus-container .bonus-btn {
+  border-radius: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  color: white;
+  outline: none;
+  height: 50px;
+  border: 2px solid white;
+  touch-action: manipulation;
+  width: 100%;
+  font-size: 1.5rem;
+  background: transparent;
+  margin-top: 4px;
+  text-wrap: none;
+  overflow: hidden;
+  word-break: keep-all;
+  white-space: nowrap;
+}
+
+
+.shop .bonus-container .bonus-btn:disabled {
+  color: darkgrey;
+  border-color: darkgrey;
 }
 
 canvas {
@@ -315,6 +419,8 @@ canvas {
 
 .canvas-shadow {
   position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .meta-info {
@@ -335,9 +441,11 @@ canvas {
 
 .user-name-form {
   display: flex;
-  width: 20%;
-  justify-content: center;
-  align-items: flex-start;
+  width: 80%;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .user-name-form input {
@@ -345,11 +453,11 @@ canvas {
   border: 1px solid white;
   height: 20px;
   padding-left: 15px;
-
 }
 
 .user-name-form button {
   height: 20px;
+  width: fit-content;
   margin-left: 12px;
   border-radius: 10px;
   border: 1px solid white;
@@ -400,24 +508,6 @@ canvas {
   text-align: center;
 }
 
-.shop {
-  width: 30%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.shop button {
-  width: 100%;
-  border-radius: 12px;
-  border: none;
-  margin-top: 4px;
-  text-wrap: none;
-  overflow: hidden;
-  word-break: keep-all;
-  white-space: nowrap;
-}
 
 @media (max-width: 480px) {
 
@@ -437,6 +527,23 @@ canvas {
 
   .victory-popup {
     width: 80%;
+  }
+
+
+  .user-name-form {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+
+  .user-name-form button {
+    margin-top: 4px;
+    margin-left: 0;
   }
 }
 
