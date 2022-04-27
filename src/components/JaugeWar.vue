@@ -18,8 +18,8 @@ const canvas = ref(null);
 const canvasShadow = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
-const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: number }>());
-const userClicks = ref(0);
+const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: number, team: string }>());
+const currentUser = ref<{ uuid: string, user: string, clicks: number, team: string } | null>(null);
 const inputUserName = ref(null);
 const goButton = ref(null);
 const top = ref();
@@ -78,8 +78,8 @@ socket.on(PLAYERS_COUNT_EVENT, (playersCount: number) => {
     }
 );
 
-socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: string, clicks: number }[]) => {
-  userClicks.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0]?.clicks ?? undefined;
+socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: string, clicks: number, team: string }[]) => {
+  currentUser.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0];
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
 });
 
@@ -198,6 +198,10 @@ function registerUsername() {
 function background(color: string | undefined) {
   return `background: ${color}`;
 }
+
+function color(team?: string){
+  return 'color: ' + (team === 'top' ? topColor.value : team === 'bottom' ? bottomColor.value : 'white');
+}
 </script>
 
 <template>
@@ -220,9 +224,9 @@ function background(color: string | undefined) {
           <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
           <button ref="goButton" @click="registerUsername()">Inscris toi !</button>
         </div>
-        <span class="user-clicks" v-if="username">{{ username }} clicks : {{ userClicks }}</span>
+        <span class="user-clicks" :style="color(currentUser?.team)" v-if="username">{{ username }} clicks : {{ currentUser?.clicks }}</span>
         <div class="bonus-container">
-          <button class="bonus-btn" v-for="bonus in bonuses" :disabled="bonus.cost > userClicks" @click="buyBonus(bonus, $event)">{{ bonus.label }}</button>
+          <button class="bonus-btn" v-for="bonus in bonuses" :disabled="bonus.cost > (currentUser?.clicks ?? 0)" @click="buyBonus(bonus, $event)">{{ bonus.label }}</button>
         </div>
         </div>
       <div class="btns-container">
@@ -235,7 +239,7 @@ function background(color: string | undefined) {
     <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
     </button>
     <div class="players-list" v-if="onlinePlayersRef">
-      <span v-for="player in onlinePlayersRef">{{ player.user }} - {{ player.clicks }}</span>
+      <span v-for="player in onlinePlayersRef" :style="color(player?.team)">{{ player.user }} - {{ player.clicks }}</span>
     </div>
   </div>
   <div v-if="gameIsFinished" :style="background(winningColorRef)" class="victory-popup">
@@ -377,6 +381,8 @@ h1.title span {
 .shop {
   width: 80%;
   font-size: 1.5em;
+  display: flex;
+  flex-direction: column;
 }
 
 .shop .title {
@@ -389,7 +395,12 @@ h1.title span {
 }
 
 .shop .user-clicks {
+  margin-top: 4px;
   font-weight: bold;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  padding: 8px;
+  width: fit-content;
 }
 
 .shop .bonus-container {
@@ -491,12 +502,16 @@ canvas {
   align-items: flex-start;
   max-height: 20vh;
   overflow: auto;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  padding: 4px;
 }
 
 .players-list span {
   font-size: 1.5em;
   font-weight: bold;
   color: white;
+  margin-left: 4px;
 }
 
 
