@@ -47,6 +47,7 @@ const MAX_COLOR_VALUE = 500;
 
 let victoryTime;
 let previousWinner;
+let mostClickWinner;
 
 
 const bonuses = [
@@ -121,13 +122,18 @@ io.on('connection', (socket) => {
         }
         if (jaugeWarState.topColor >= MAX_COLOR_VALUE || jaugeWarState.bottomColor >= MAX_COLOR_VALUE) {
             victoryTime = new Date();
-            previousWinner = registeredPlayer.get(action.uuid)?.username ?? 'Non inscrit·e';
+            const winningTeam =  jaugeWarState.topColor >= MAX_COLOR_VALUE ? 'top' : 'bottom';
+            previousWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username:'Non inscrit·e'};
+            mostClickWinner = registeredPlayersToList()
+               .filter(x => x.team === winningTeam)
+               .sort((a, b) => b.clicks - a.clicks)[0];
             io.emit(VICTORY_EVENT, {
                 winningColor:
                     jaugeWarState
                         .topColor >= MAX_COLOR_VALUE ? colors.topColorHex : colors.bottomColorHex,
                 victoryTime: victoryTime,
-                winner: previousWinner
+                lastClickWinner: previousWinner,
+                mostClickWinner: mostClickWinner
             });
             jaugeWarState.finished = true;
             setTimeout(() => {

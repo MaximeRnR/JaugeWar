@@ -31,6 +31,7 @@ let topColor = ref('#25A851');
 let bottomColor = ref('#A8201D');
 let winningColorRef = ref<string>();
 let winnerRef = ref<string>();
+let mostClickWinnerRef = ref<string>();
 let timeRemainingRef = ref<number>();
 let currentJaugeWarState: { topColor: number, bottomColor: number, finished: boolean, direction: string };
 
@@ -83,9 +84,10 @@ socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: s
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
 });
 
-socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, winner: string }) => {
+socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, lastClickWinner: any, mostClickWinner: any }) => {
   winningColorRef.value = victoryEvent.winningColor;
-  winnerRef.value = victoryEvent.winner;
+  winnerRef.value = victoryEvent.lastClickWinner.username;
+  mostClickWinnerRef.value = victoryEvent.mostClickWinner.user;
   if (victoryEvent.victoryTime) {
     const newGameStartDate = new Date(Date.parse(victoryEvent.victoryTime));
     newGameStartDate.setSeconds(newGameStartDate.getSeconds() + 30);
@@ -244,7 +246,8 @@ function color(team?: string){
   </div>
   <div v-if="gameIsFinished" :style="background(winningColorRef)" class="victory-popup">
     <span>Victoire de {{ winningColorRef }} !</span>
-    <span>Gagnant·e : {{ winnerRef }}</span>
+    <span>Dernier click : {{ winnerRef }}</span>
+    <span>Le plus de clicks : {{ mostClickWinnerRef }}</span>
     <span>Prochaine partie dans {{ timeRemainingRef }}s !</span>
   </div>
 </template>
