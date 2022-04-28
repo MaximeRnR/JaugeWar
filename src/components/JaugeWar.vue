@@ -69,8 +69,7 @@ socket.on(JAUGE_WAR_STATE_EVENT, function(jaugeWarState: { topColor: number, bot
 socket.on(COLOR_CHANGED_EVENT, function(colors: { topColorHex: string, bottomColorHex: string }) {
   topColor.value = colors.topColorHex;
   bottomColor.value = colors.bottomColorHex;
-  document.querySelector('body')!.style.background = `linear-gradient(-45deg, ${topColor.value}, ${bottomColor.value})`;
-  document.querySelector('body')!.style.backgroundSize = '200% 200%';
+  document.querySelector('body')!.style.backgroundImage = `linear-gradient(-45deg, ${topColor.value}, ${bottomColor.value})`;
   draw();
 });
 
@@ -96,6 +95,7 @@ socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: str
       const timeRemaining = newGameStartDate.getTime() - now;
       timeRemainingRef.value = Math.floor((timeRemaining % (1000 * 60)) / (1000));
       if (timeRemaining <= 0) {
+        winningColorRef.value = undefined;
         clearInterval(timeBeforeNewGame);
       }
     }, 1000);

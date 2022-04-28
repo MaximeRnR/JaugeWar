@@ -142,8 +142,14 @@ io.on('connection', (socket) => {
                 jaugeWarState.finished = false;
                 colors.bottomColorHex = getRandomColor();
                 colors.topColorHex = getRandomColor();
+                registeredPlayer.forEach((v,k) => {
+                    v.clicks = 0;
+                    v.activeBonuses = [];
+                    v.team = null;
+                });
                 io.emit(COLOR_CHANGED_EVENT, colors);
                 io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
+                io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
             }, 30000)
         }
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
