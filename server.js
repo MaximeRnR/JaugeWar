@@ -32,7 +32,7 @@ const registeredPlayer = new Map();
 
 function registeredPlayersToList() {
     return [...registeredPlayer.entries()].map(x => {
-        return {uuid: x[0], user: x[1].username, clicks: x[1].clicks, activeBonuses: x[1].activeBonuses, team: x[1].team}
+        return {uuid: x[0], username: x[1].username, clicks: x[1].clicks, activeBonuses: x[1].activeBonuses, team: x[1].team, victory: x[1].victory}
     });
 }
 
@@ -46,7 +46,7 @@ const MAX_COLOR_VALUE = 500;
 
 
 let victoryTime;
-let previousWinner;
+let lastClickWinner;
 let mostClickWinner;
 
 
@@ -69,7 +69,8 @@ io.on('connection', (socket) => {
                 jaugeWarState
                     .topColor === MAX_COLOR_VALUE ? colors.topColorHex : colors.bottomColorHex,
             victoryTime: victoryTime,
-            winner: previousWinner
+            lastClickWinner: lastClickWinner,
+            mostClickWinner: mostClickWinner
         });
     }
 
@@ -123,16 +124,25 @@ io.on('connection', (socket) => {
         if (jaugeWarState.topColor >= MAX_COLOR_VALUE || jaugeWarState.bottomColor >= MAX_COLOR_VALUE) {
             victoryTime = new Date();
             const winningTeam =  jaugeWarState.topColor >= MAX_COLOR_VALUE ? 'top' : 'bottom';
-            previousWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username:'Non inscrit·e'};
-            mostClickWinner = registeredPlayersToList()
+            lastClickWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username:'Non inscrit·e'};
+            lastClickWinner.victory += 1;
+            if(lastClickWinner){
+                registeredPlayer.set(action.uuid, lastClickWinner);
+            }
+            const mostClickWinnerUuid = registeredPlayersToList()
                .filter(x => x.team === winningTeam)
-               .sort((a, b) => b.clicks - a.clicks)[0];
+               .sort((a, b) => b.clicks - a.clicks)[0]?.uuid;
+            mostClickWinner = registeredPlayer.get(mostClickWinnerUuid);
+            mostClickWinner.victory += 2;
+            if(mostClickWinner){
+                registeredPlayer.set(mostClickWinnerUuid, mostClickWinner);
+            }
             io.emit(VICTORY_EVENT, {
                 winningColor:
                     jaugeWarState
                         .topColor >= MAX_COLOR_VALUE ? colors.topColorHex : colors.bottomColorHex,
                 victoryTime: victoryTime,
-                lastClickWinner: previousWinner,
+                lastClickWinner: lastClickWinner,
                 mostClickWinner: mostClickWinner
             });
             jaugeWarState.finished = true;
@@ -170,7 +180,7 @@ io.on('connection', (socket) => {
         if (registeredPlayer.has(ids.uuid)) {
             return;
         }
-        registeredPlayer.set(ids.uuid, {username: ids.username, clicks: 0, activeBonuses: [], team: null });
+        registeredPlayer.set(ids.uuid, {username: ids.username, clicks: 0, activeBonuses: [], team: null, victory: 0});
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
         io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
         io.emit(COLOR_CHANGED_EVENT, colors);

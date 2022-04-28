@@ -11,6 +11,7 @@ import arrowUp from '../assets/white-up-arrow.png';
 import github from '../assets/github.png';
 import twitter from '../assets/twitter-logo.png';
 import jwlogo from '../assets/jwlogo.png';
+import jauge from '../assets/jauge.svg';
 
 
 const HOST = location.origin.replace(/^http/, 'ws');
@@ -18,8 +19,8 @@ const canvas = ref(null);
 const canvasShadow = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
-const onlinePlayersRef = ref(new Array<{ uuid: string, user: string, clicks: number, team: string }>());
-const currentUser = ref<{ uuid: string, user: string, clicks: number, team: string } | null>(null);
+const onlinePlayersRef = ref(new Array<{ uuid: string, username: string, clicks: number, team: string, victory: number }>());
+const currentUser = ref<{ uuid: string, username: string, clicks: number, team: string, victory: number } | null>(null);
 const inputUserName = ref(null);
 const goButton = ref(null);
 const top = ref();
@@ -78,7 +79,7 @@ socket.on(PLAYERS_COUNT_EVENT, (playersCount: number) => {
     }
 );
 
-socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: string, clicks: number, team: string }[]) => {
+socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, username: string, clicks: number, team: string, victory: number }[]) => {
   currentUser.value = onlinePlayersWithClics?.filter(x => x.uuid === userUUID)[0];
   onlinePlayersRef.value = onlinePlayersWithClics?.sort((a, b) => b.clicks - a.clicks);
 });
@@ -86,7 +87,7 @@ socket.on(ONLINE_PLAYERS_EVENT, (onlinePlayersWithClics: { uuid: string, user: s
 socket.on(VICTORY_EVENT, (victoryEvent: { winningColor: string, victoryTime: string, lastClickWinner: any, mostClickWinner: any }) => {
   winningColorRef.value = victoryEvent.winningColor;
   winnerRef.value = victoryEvent.lastClickWinner.username;
-  mostClickWinnerRef.value = victoryEvent.mostClickWinner.user;
+  mostClickWinnerRef.value = victoryEvent.mostClickWinner.username;
   if (victoryEvent.victoryTime) {
     const newGameStartDate = new Date(Date.parse(victoryEvent.victoryTime));
     newGameStartDate.setSeconds(newGameStartDate.getSeconds() + 30);
@@ -197,6 +198,10 @@ function registerUsername() {
 }
 
 
+function sortByVictory(players: any[]){
+  return players.sort((a,b) => b.victory - a.victory);
+}
+
 function background(color: string | undefined) {
   return `background: ${color}`;
 }
@@ -238,10 +243,20 @@ function color(team?: string){
     </div>
   </div>
   <div class="meta-info">
+    <div class="players-list" v-if="onlinePlayersRef">
+      <span class="leaderboard-title">Clicks</span>
+      <span v-for="player in onlinePlayersRef" :style="color(player?.team)">
+        <span>{{ player.username }}</span><span>{{ player.clicks }}</span>
+      </span>
+    </div>
+
     <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
     </button>
     <div class="players-list" v-if="onlinePlayersRef">
-      <span v-for="player in onlinePlayersRef" :style="color(player?.team)">{{ player.user }} - {{ player.clicks }}</span>
+      <span class="leaderboard-title">LeaderBoard</span>
+      <span v-for="player in sortByVictory(onlinePlayersRef)" :style="color(player?.team)">
+        <span>{{ player.username }}</span><span class="victory-counter">{{ player.victory }}<img :src="jauge" alt="victory icon"/></span>
+      </span>
     </div>
   </div>
   <div v-if="gameIsFinished" :style="background(winningColorRef)" class="victory-popup">
@@ -498,6 +513,7 @@ canvas {
 }
 
 .players-list {
+  position: relative;
   width: 30%;
   display: flex;
   flex-direction: column;
@@ -505,16 +521,26 @@ canvas {
   align-items: flex-start;
   max-height: 20vh;
   overflow: auto;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.5);
   border-radius: 12px;
-  padding: 4px;
+  padding: 8px;
 }
 
-.players-list span {
-  font-size: 1.5em;
+.players-list .leaderboard-title {
   font-weight: bold;
+  font-size: 1rem;
+  margin-bottom: 8px;
+  font-style: italic;
   color: white;
+}
+
+.players-list > span {
+  font-weight: bold;
   margin-left: 4px;
+  font-size: 1.5rem;
+  display: flex;
+  width: 90%;
+  justify-content: space-between;
 }
 
 
@@ -537,6 +563,10 @@ canvas {
 
 .victory-popup span {
   text-align: center;
+}
+
+.victory-counter {
+  display: flex;
 }
 
 .network {
