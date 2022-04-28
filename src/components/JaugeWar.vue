@@ -198,15 +198,16 @@ function registerUsername() {
 }
 
 
-function sortByVictory(players: any[]){
-  return players.sort((a,b) => b.victory - a.victory);
+function sortByVictory(players: any[]) {
+  const copyPlayers = [...players];
+  return copyPlayers.sort((a, b) => b.victory - a.victory);
 }
 
 function background(color: string | undefined) {
   return `background: ${color}`;
 }
 
-function color(team?: string){
+function color(team?: string) {
   return 'color: ' + (team === 'top' ? topColor.value : team === 'bottom' ? bottomColor.value : 'white');
 }
 </script>
@@ -217,8 +218,10 @@ function color(team?: string){
     <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
   </h1>
   <div class="network">
-    <a href="https://github.com/MaximeRnR/JaugeWar" title="Source code" target="_blank" rel="noopener"><img alt="github logo" :src="github"/></a>
-    <a href="https://twitter.com/MrMasquime" title="@MrMasquime" target="_blank" rel="noopener"><img alt="twitter logo" :src="twitter"/></a>
+    <a href="https://github.com/MaximeRnR/JaugeWar" title="Source code" target="_blank" rel="noopener"><img
+        alt="github logo" :src="github"/></a>
+    <a href="https://twitter.com/MrMasquime" title="@MrMasquime" target="_blank" rel="noopener"><img alt="twitter logo"
+                                                                                                     :src="twitter"/></a>
   </div>
   <div class="play-area">
     <canvas ref="canvas" width="500" height="500"></canvas>
@@ -231,11 +234,15 @@ function color(team?: string){
           <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
           <button ref="goButton" @click="registerUsername()">Inscris toi !</button>
         </div>
-        <span class="user-clicks" :style="color(currentUser?.team)" v-if="username">{{ username }} clicks : {{ currentUser?.clicks }}</span>
+        <span class="user-clicks" :style="color(currentUser?.team)" v-if="username">{{
+            username
+          }} clicks : {{ currentUser?.clicks }}</span>
         <div class="bonus-container">
-          <button class="bonus-btn" v-for="bonus in bonuses" :disabled="bonus.cost > (currentUser?.clicks ?? 0)" @click="buyBonus(bonus, $event)">{{ bonus.label }}</button>
+          <button class="bonus-btn" v-for="bonus in bonuses" :disabled="bonus.cost > (currentUser?.clicks ?? 0)"
+                  @click="buyBonus(bonus, $event)">{{ bonus.label }}
+          </button>
         </div>
-        </div>
+      </div>
       <div class="btns-container">
         <button ref="top" class="increase-btn" :style="background(topColor)">+1</button>
         <button ref="bottom" class="increase-btn" :style="background(bottomColor)">+1</button>
@@ -244,19 +251,23 @@ function color(team?: string){
   </div>
   <div class="meta-info">
     <div class="players-list" v-if="onlinePlayersRef">
-      <span class="leaderboard-title">Clicks</span>
-      <span v-for="player in onlinePlayersRef" :style="color(player?.team)">
-        <span>{{ player.username }}</span><span>{{ player.clicks }}</span>
-      </span>
+      <div class="leaderboard-title">Clicks</div>
+      <div class="players-container">
+        <span v-for="player in onlinePlayersRef" :style="color(player?.team)">
+          <span>{{ player.username }}</span><span>{{ player.clicks }}</span>
+        </span>
+      </div>
     </div>
 
     <button ref="changeColorBtn" class="change-color" :disabled="!!winningColorRef" @click="changeColor()">Change colors
     </button>
     <div class="players-list" v-if="onlinePlayersRef">
-      <span class="leaderboard-title">LeaderBoard</span>
-      <span v-for="player in sortByVictory(onlinePlayersRef)" :style="color(player?.team)">
-        <span>{{ player.username }}</span><span class="victory-counter">{{ player.victory }}<img :src="jauge" alt="victory icon"/></span>
-      </span>
+      <div class="leaderboard-title">Leaderboard</div>
+      <div class="players-container">
+        <span v-for="player in sortByVictory(onlinePlayersRef)" :style="color(player?.team)">
+          <span>{{ player.username }}</span><span>{{ player.victory }}<img :src="jauge" alt="victory_icon"/></span>
+        </span>
+      </div>
     </div>
   </div>
   <div v-if="gameIsFinished" :style="background(winningColorRef)" class="victory-popup">
@@ -291,7 +302,7 @@ function color(team?: string){
   0% {
     opacity: 1;
   }
-  50%{
+  50% {
     opacity: 1;
   }
   60% {
@@ -407,7 +418,7 @@ h1.title span {
   font-weight: bold;
 }
 
-.shop .subtitle{
+.shop .subtitle {
   font-style: italic;
   font-size: 0.8rem;
 }
@@ -415,7 +426,7 @@ h1.title span {
 .shop .user-clicks {
   margin-top: 4px;
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.5);
   border-radius: 12px;
   padding: 8px;
   width: fit-content;
@@ -520,7 +531,6 @@ canvas {
   justify-content: flex-start;
   align-items: flex-start;
   max-height: 20vh;
-  overflow: auto;
   background: rgba(255, 255, 255, 0.5);
   border-radius: 12px;
   padding: 8px;
@@ -532,15 +542,34 @@ canvas {
   margin-bottom: 8px;
   font-style: italic;
   color: white;
+  position: absolute;
+  top: 8px;
 }
 
-.players-list > span {
+.players-list .players-container {
+  margin-top: 24px;
   font-weight: bold;
   margin-left: 4px;
   font-size: 1.5rem;
   display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  max-height: 80%;
+  overflow: auto;
+}
+.players-list .players-container > span {
+  display: flex;
   width: 90%;
+  flex-direction: row;
   justify-content: space-between;
+  align-items: center;
+}
+
+.players-list .players-container span span {
+  display: flex;
+  align-items: center;
 }
 
 
