@@ -23,7 +23,6 @@ function getRandomColor() {
     return color;
 }
 
-
 const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 
 const jaugeWarState = {topColor: 250, bottomColor: 250, finished: false, direction: ''};
@@ -44,21 +43,48 @@ const VICTORY_EVENT = 'victory';
 
 const MAX_COLOR_VALUE = 500;
 
-
 let victoryTime;
 let lastClickWinner;
 let mostClickWinner;
-
 
 const bonuses = [
     {id: 0, lineMultiplier: 2, cost: 10, duration: 10000},
     {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
 ];
 
+
+const BOT_ACTIVATION_THRESHOLD = 3;
+let botsInterval;
+const activeBots = (socket) => {
+    clearInterval(botsInterval);
+    botsInterval = setInterval(() => {
+        if (Math.floor(Math.random() * 2) % 2) {
+            jaugeWarState.topColor++;
+            jaugeWarState.bottomColor--;
+            jaugeWarState.direction = 'down';
+        } else {
+            jaugeWarState.topColor--;
+            jaugeWarState.bottomColor++;
+            jaugeWarState.direction = 'up';
+        }
+        io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
+
+    }, 300)
+};
+
+
+function checkBotsActivation(socket) {
+    if (playersCount > BOT_ACTIVATION_THRESHOLD || jaugeWarState.finished) {
+        clearInterval(botsInterval);
+    } else {
+        activeBots(socket);
+    }
+}
+
 io.on('connection', (socket) => {
     console.log('a user connected');
     playersCount++;
-
+    checkBotsActivation(socket);
     io.emit(COLOR_CHANGED_EVENT, colors);
     io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList() ?? []);
     io.emit(PLAYERS_COUNT_EVENT, playersCount);
@@ -76,6 +102,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         playersCount--;
+        checkBotsActivation(socket);
         io.emit(PLAYERS_COUNT_EVENT, playersCount);
         console.log('user disconnected');
     });
@@ -122,6 +149,7 @@ io.on('connection', (socket) => {
             registeredPlayer.set(action.uuid, updatedPlayer);
         }
         if (jaugeWarState.topColor >= MAX_COLOR_VALUE || jaugeWarState.bottomColor >= MAX_COLOR_VALUE) {
+            clearInterval(botsInterval);
             victoryTime = new Date();
             const winningTeam =  jaugeWarState.topColor >= MAX_COLOR_VALUE ? 'top' : 'bottom';
             lastClickWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username:'Non inscrit·e'};
@@ -157,6 +185,7 @@ io.on('connection', (socket) => {
                     v.activeBonuses = [];
                     v.team = null;
                 });
+                checkBotsActivation(socket);
                 io.emit(COLOR_CHANGED_EVENT, colors);
                 io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
                 io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
