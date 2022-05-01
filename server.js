@@ -3,10 +3,12 @@ const path = require('path');
 const uuid = require('uuid');
 const express = require('express');
 const {Server} = require("socket.io");
+const {PostgresService, client} = require("./postgresql");
 const server = express()
     .use(express.static(__dirname + '/dist'))
     .use((req, res) => res.sendFile(path.join(__dirname + '/dist/index.html')))
     .listen(PORT, () => console.log(`Listening on ${PORT}`));
+
 
 const io = new Server(server, {
     cors: {
@@ -14,24 +16,38 @@ const io = new Server(server, {
     }
 });
 
-function getRandomColor() {
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-}
-
 const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
-
 const jaugeWarState = {topColor: 250, bottomColor: 250, finished: false, direction: ''};
+const bonuses = [
+    {id: 0, lineMultiplier: 2, cost: 10, duration: 10000},
+    {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
+];
+
+const psqlService = new PostgresService(client);
+
+let registeredPlayer = new Map();
+psqlService
+    .initDB()
+    .then(() => psqlService.loadPlayersData()
+        .then(playersData => {
+            if(playersData.rows[0]){
+                playersData.rows[0].data.forEach(player => registeredPlayer.set(player.uuid, {...player}))
+            }
+        }))
+
+
 let playersCount = 0;
-const registeredPlayer = new Map();
 
 function registeredPlayersToList() {
     return [...registeredPlayer.entries()].map(x => {
-        return {uuid: x[0], username: x[1].username, clicks: x[1].clicks, activeBonuses: x[1].activeBonuses, team: x[1].team, victory: x[1].victory}
+        return {
+            uuid: x[0],
+            username: x[1].username,
+            clicks: x[1].clicks,
+            activeBonuses: x[1].activeBonuses,
+            team: x[1].team,
+            victory: x[1].victory
+        }
     });
 }
 
@@ -41,17 +57,12 @@ const PLAYERS_COUNT_EVENT = "players-count";
 const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
 const VICTORY_EVENT = 'victory';
 
-const MAX_COLOR_VALUE = 500;
 
+const DELAY_BETWEEN_GAMES = 30000;
+const MAX_COLOR_VALUE = 500;
 let victoryTime;
 let lastClickWinner;
 let mostClickWinner;
-
-const bonuses = [
-    {id: 0, lineMultiplier: 2, cost: 10, duration: 10000},
-    {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
-];
-
 
 const BOT_ACTIVATION_THRESHOLD = 3;
 let botsInterval;
@@ -72,13 +83,21 @@ const activeBots = (socket) => {
     }, 300)
 };
 
-
 function checkBotsActivation(socket) {
     if (playersCount > BOT_ACTIVATION_THRESHOLD || jaugeWarState.finished) {
         clearInterval(botsInterval);
     } else {
         activeBots(socket);
     }
+}
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
 }
 
 io.on('connection', (socket) => {
@@ -115,14 +134,14 @@ io.on('connection', (socket) => {
         }
         const playerModifier = registeredPlayer.get(action.uuid)?.activeBonuses
             .map(b => b.lineMultiplier)
-            .reduce((b1,b2) => b1 * b2, 1) ?? 1;
+            .reduce((b1, b2) => b1 * b2, 1) ?? 1;
         if (action.action.indexOf('top-color') !== -1 && jaugeWarState.topColor < MAX_COLOR_VALUE) {
             jaugeWarState.topColor += (1 * playerModifier);
             jaugeWarState.bottomColor -= (1 * playerModifier);
             jaugeWarState.direction = 'down';
-            if(registeredPlayer.has(action.uuid)){
+            if (registeredPlayer.has(action.uuid)) {
                 const currentPlayer = registeredPlayer.get(action.uuid);
-                if(currentPlayer.team === 'bottom'){
+                if (currentPlayer.team === 'bottom') {
                     currentPlayer.clicks = 0;
                 }
                 currentPlayer.team = 'top';
@@ -134,9 +153,9 @@ io.on('connection', (socket) => {
             jaugeWarState.topColor -= (1 * playerModifier);
             jaugeWarState.direction = 'up';
 
-            if(registeredPlayer.has(action.uuid)){
+            if (registeredPlayer.has(action.uuid)) {
                 const currentPlayer = registeredPlayer.get(action.uuid);
-                if(currentPlayer.team === 'top'){
+                if (currentPlayer.team === 'top') {
                     currentPlayer.clicks = 0;
                 }
                 currentPlayer.team = 'bottom';
@@ -151,18 +170,18 @@ io.on('connection', (socket) => {
         if (jaugeWarState.topColor >= MAX_COLOR_VALUE || jaugeWarState.bottomColor >= MAX_COLOR_VALUE) {
             clearInterval(botsInterval);
             victoryTime = new Date();
-            const winningTeam =  jaugeWarState.topColor >= MAX_COLOR_VALUE ? 'top' : 'bottom';
-            lastClickWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username:'Non inscrit·e'};
+            const winningTeam = jaugeWarState.topColor >= MAX_COLOR_VALUE ? 'top' : 'bottom';
+            lastClickWinner = registeredPlayer.has(action.uuid) ? registeredPlayer.get(action.uuid) : {username: 'Non inscrit·e'};
             lastClickWinner.victory += 1;
-            if(lastClickWinner){
+            if (lastClickWinner) {
                 registeredPlayer.set(action.uuid, lastClickWinner);
             }
             const mostClickWinnerUuid = registeredPlayersToList()
-               .filter(x => x.team === winningTeam)
-               .sort((a, b) => b.clicks - a.clicks)[0]?.uuid;
+                .filter(x => x.team === winningTeam)
+                .sort((a, b) => b.clicks - a.clicks)[0]?.uuid;
             mostClickWinner = registeredPlayer.get(mostClickWinnerUuid);
             mostClickWinner.victory += 2;
-            if(mostClickWinner){
+            if (mostClickWinner) {
                 registeredPlayer.set(mostClickWinnerUuid, mostClickWinner);
             }
             io.emit(VICTORY_EVENT, {
@@ -180,16 +199,17 @@ io.on('connection', (socket) => {
                 jaugeWarState.finished = false;
                 colors.bottomColorHex = getRandomColor();
                 colors.topColorHex = getRandomColor();
-                registeredPlayer.forEach((v,k) => {
+                registeredPlayer.forEach((v, k) => {
                     v.clicks = 0;
                     v.activeBonuses = [];
                     v.team = null;
                 });
+                psqlService.savePlayersData(registeredPlayersToList()).then(() => console.log('player data saved'))
                 checkBotsActivation(socket);
                 io.emit(COLOR_CHANGED_EVENT, colors);
                 io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
                 io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
-            }, 30000)
+            }, DELAY_BETWEEN_GAMES)
         }
         io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);
         io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
@@ -219,7 +239,7 @@ io.on('connection', (socket) => {
     socket.on('bonus-bought', (bonusPayload) => {
         const player = registeredPlayer.get(bonusPayload.uuid);
         const bonus = bonuses.filter(b => b.id === bonusPayload.bonusId)[0];
-        if(player && bonus && player.clicks >= bonus.cost && player.activeBonuses.filter(b => b.id === bonusPayload.bonusId).length === 0){
+        if (player && bonus && player.clicks >= bonus.cost && player.activeBonuses.filter(b => b.id === bonusPayload.bonusId).length === 0) {
             const lengthOfBonuses = player.activeBonuses.push(bonus);
             player.clicks -= bonus.cost;
             registeredPlayer.set(bonusPayload.uuid, player);
@@ -229,6 +249,6 @@ io.on('connection', (socket) => {
             }, bonus.duration);
             io.emit(ONLINE_PLAYERS_EVENT, registeredPlayersToList());
         }
-    })
+    });
 
 })

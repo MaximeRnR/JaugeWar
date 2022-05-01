@@ -12,6 +12,7 @@
     "@vueuse/rxjs": "^8.2.6",
     "cors": "^2.8.5",
     "express": "^4.17.3",
+    "pg": "^8.7.3",
     "rxjs": "^7.5.5",
     "socket.io": "^4.4.1",
     "socket.io-client": "^4.4.1",
