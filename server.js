@@ -1,9 +1,12 @@
+process.on('uncaughtException', function (err) {
+    console.log(err);
+});
+
 const PORT = process.env.PORT || 3000;
 const path = require('path');
 const uuid = require('uuid');
 const express = require('express');
 const {Server} = require("socket.io");
-const {PostgresService, client} = require("./postgresql");
 const server = express()
     .use(express.static(__dirname + '/dist'))
     .use((req, res) => res.sendFile(path.join(__dirname + '/dist/index.html')))
@@ -23,18 +26,8 @@ const bonuses = [
     {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
 ];
 
-const psqlService = new PostgresService(client);
 
 let registeredPlayer = new Map();
-psqlService
-    .initDB()
-    .then(() => psqlService.loadPlayersData()
-        .then(playersData => {
-            if(playersData.rows[0]){
-                playersData.rows[0].data.forEach(player => registeredPlayer.set(player.uuid, {...player}))
-            }
-        }))
-
 
 let playersCount = 0;
 
@@ -204,7 +197,6 @@ io.on('connection', (socket) => {
                     v.activeBonuses = [];
                     v.team = null;
                 });
-                psqlService.savePlayersData(registeredPlayersToList()).then(() => console.log('player data saved'))
                 checkBotsActivation(socket);
                 io.emit(COLOR_CHANGED_EVENT, colors);
                 io.emit(JAUGE_WAR_STATE_EVENT, jaugeWarState);

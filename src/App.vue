@@ -1,11 +1,14 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
-import JaugeWar from './components/JaugeWar.vue'
+import jwlogo from './assets/jwlogo.png';
 </script>
 
 <template>
-  <JaugeWar/>
+  <h1 class="title">
+  <img :src="jwlogo" alt="Jauge War"/>
+</h1>
+  <router-view/>
 </template>
 
 <style>
@@ -43,5 +46,14 @@ body {
   background: transparent;
 }
 
+h1.title {
+  display: flex;
+  flex-direction: column;
+  color: white;
+}
+
+h1.title img {
+  height: 70px;
+}
 
 </style>

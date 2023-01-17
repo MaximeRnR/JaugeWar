@@ -10,7 +10,6 @@ import arrowDown from '../assets/white-down-arrow.png';
 import arrowUp from '../assets/white-up-arrow.png';
 import github from '../assets/github.png';
 import twitter from '../assets/twitter-logo.png';
-import jwlogo from '../assets/jwlogo.png';
 import jauge from '../assets/jauge.svg';
 
 
@@ -213,10 +212,7 @@ function color(team?: string) {
 </script>
 
 <template>
-  <h1 class="title">
-    <img :src="jwlogo" alt="Jauge War"/>
-    <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
-  </h1>
+  <span>Joueur·euse en ligne: {{ onlinePlayerCount }}</span>
   <div class="network">
     <a href="https://github.com/MaximeRnR/JaugeWar" title="Source code" target="_blank" rel="noopener"><img
         alt="github logo" :src="github"/></a>
@@ -338,15 +334,6 @@ function color(team?: string) {
 </style>
 <style scoped>
 
-h1.title {
-  display: flex;
-  flex-direction: column;
-  color: white;
-}
-
-h1.title img {
-  height: 70px;
-}
 
 h1.title span {
   font-style: italic;
