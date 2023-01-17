@@ -41,7 +41,7 @@ let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.3;
 const height = 500;
 
-const socket = io(HOST);
+const socket = io("ws://localhost:3000");
 
 const COLOR_CHANGED_EVENT = 'color-changed';
 const ONLINE_PLAYERS_EVENT = 'online-players';

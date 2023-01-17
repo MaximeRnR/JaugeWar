@@ -2,6 +2,7 @@ const PORT = process.env.PORT || 3000;
 const path = require('path');
 const uuid = require('uuid');
 const express = require('express');
+const {TwitterService} = require('./twitter');
 const {Server} = require("socket.io");
 const {PostgresService, client} = require("./postgresql");
 const server = express()
@@ -16,6 +17,18 @@ const io = new Server(server, {
     }
 });
 
+const twitterService = new TwitterService();
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+let nextColors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 const colors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
 const jaugeWarState = {topColor: 250, bottomColor: 250, finished: false, direction: ''};
 const bonuses = [
@@ -23,17 +36,17 @@ const bonuses = [
     {id: 1, lineMultiplier: 5, cost: 50, duration: 5000}
 ];
 
-const psqlService = new PostgresService(client);
+// const psqlService = new PostgresService(client);
 
 let registeredPlayer = new Map();
-psqlService
-    .initDB()
-    .then(() => psqlService.loadPlayersData()
-        .then(playersData => {
-            if(playersData.rows[0]){
-                playersData.rows[0].data.forEach(player => registeredPlayer.set(player.uuid, {...player}))
-            }
-        }))
+// psqlService
+//     .initDB()
+//     .then(() => psqlService.loadPlayersData()
+//         .then(playersData => {
+//             if(playersData.rows[0]){
+//                 playersData.rows[0].data.forEach(player => registeredPlayer.set(player.uuid, {...player}))
+//             }
+//         }))
 
 
 let playersCount = 0;
@@ -58,7 +71,7 @@ const JAUGE_WAR_STATE_EVENT = 'jauge-war-state';
 const VICTORY_EVENT = 'victory';
 
 
-const DELAY_BETWEEN_GAMES = 30000;
+const DELAY_BETWEEN_GAMES = 60000;
 const MAX_COLOR_VALUE = 500;
 let victoryTime;
 let lastClickWinner;
@@ -193,6 +206,8 @@ io.on('connection', (socket) => {
                 mostClickWinner: mostClickWinner
             });
             jaugeWarState.finished = true;
+            nextColors = {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()};
+            twitterService.tweetNewGame(nextColors);
             setTimeout(() => {
                 jaugeWarState.topColor = 250;
                 jaugeWarState.bottomColor = 250;
