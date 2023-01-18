@@ -2,6 +2,7 @@
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
 import jwlogo from './assets/jwlogo.png';
+
 </script>
 
 <template>
@@ -21,6 +22,7 @@ body {
   background: linear-gradient(-45deg, #5e23d5, #2f901f);
   background-size: 400% 400%;
   animation: gradient 15s ease infinite;
+  padding: 8px;
 }
 
 

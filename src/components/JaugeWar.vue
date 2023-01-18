@@ -11,17 +11,17 @@ import arrowUp from '../assets/white-up-arrow.png';
 import github from '../assets/github.png';
 import twitter from '../assets/twitter-logo.png';
 import jauge from '../assets/jauge.svg';
+import {useRoute} from 'vue-router';
 
 
 const HOST = location.origin.replace(/^http/, 'ws');
+const route = useRoute();
 const canvas = ref(null);
 const canvasShadow = ref(null);
 const changeColorBtn = ref(null);
 const onlinePlayerCount = ref(0);
 const onlinePlayersRef = ref(new Array<{ uuid: string, username: string, clicks: number, team: string, victory: number }>());
 const currentUser = ref<{ uuid: string, username: string, clicks: number, team: string, victory: number } | null>(null);
-const inputUserName = ref(null);
-const goButton = ref(null);
 const top = ref();
 const bottom = ref();
 
@@ -40,7 +40,7 @@ let ctx: CanvasRenderingContext2D | null;
 const width = window.innerWidth * 0.3;
 const height = 500;
 
-const socket = io(HOST);
+const socket = io(HOST + "/" + route.params.gameId);
 
 const COLOR_CHANGED_EVENT = 'color-changed';
 const ONLINE_PLAYERS_EVENT = 'online-players';
@@ -184,17 +184,6 @@ function changeColor() {
   setTimeout(() => btnElement.disabled = false, 60000);
 }
 
-function registerUsername() {
-  const inputUserNameElement = inputUserName.value as unknown as HTMLInputElement;
-  if (!inputUserNameElement.value) {
-    return;
-  }
-  localStorage.jaugeWarUsername = inputUserNameElement.value;
-  localStorage.jaugeWarUUID = v4();
-  userUUID = localStorage.jaugeWarUUID;
-  username.value = localStorage.jaugeWarUsername;
-  socket.emit(PLAYER_USERNAME_ACTION, {uuid: userUUID, username: username.value});
-}
 
 
 function sortByVictory(players: any[]) {
@@ -226,10 +215,6 @@ function color(team?: string) {
       <div class="shop">
         <div class="title">Bonus</div>
         <div class="subtitle">Achetez des bonus en utilisant vos clicks cummulés !</div>
-        <div v-if="!username" class="user-name-form">
-          <input ref="inputUserName" type="text" class="user-name" placeholder="pseudo"/>
-          <button ref="goButton" @click="registerUsername()">Inscris toi !</button>
-        </div>
         <span class="user-clicks" :style="color(currentUser?.team)" v-if="username">{{
             username
           }} clicks : {{ currentUser?.clicks }}</span>
@@ -477,6 +462,8 @@ canvas {
   border-radius: 10px;
   border: none;
   font-weight: bold;
+  background: white;
+  cursor: pointer;
 }
 
 .user-name-form {
@@ -586,6 +573,7 @@ canvas {
 }
 
 .network {
+  display: flex;
   position: absolute;
   top: 0;
   right: 0;
