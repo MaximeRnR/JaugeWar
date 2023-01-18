@@ -1,7 +1,9 @@
 import { ref, Ref } from 'vue'
+import {Player} from './PlayersService';
 
 export interface Game {
    id: string,
+   owner: Player,
    name: string,
 }
 
@@ -29,10 +31,8 @@ export default function useGameService() {
    }
 
    async function retrieveGames(){
-      console.log("retrieving...")
       const response = await fetch("/api/games");
       const savedGames = await response.json();
-      console.log(savedGames);
       return Promise.resolve(savedGames);
    }
 

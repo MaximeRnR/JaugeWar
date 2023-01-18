@@ -20,7 +20,7 @@ const listener = server.listen(PORT, () => console.log(`Listening on ${PORT}`));
 const socket = require('socket.io')(listener);
 
 server.post('/api/games/create', function(req, res) {
-    const newGame = {id: uuid.v4(), name: req.body.name };
+    const newGame = {id: uuid.v4(), name: req.body.name, owner: req.body.owner };
     const gameSocket = socket.of("/" + newGame.id);
     gamesAndSockets.push({game: newGame, server: gameSocket});
     enableSocketServer(gameSocket, {topColor: 250, bottomColor: 250, finished: false, direction: ''}, {topColorHex: getRandomColor(), bottomColorHex: getRandomColor()}, 0, new Map());
@@ -186,7 +186,10 @@ function enableSocketServer(io, jaugeWarState, colors, playersCount, registeredP
                 lastClickWinner.victory += 1;
                 if (lastClickWinner) {
                     registeredPlayers.set(action.uuid, lastClickWinner);
-                    globalPlayers.set(action.uuid, lastClickWinner);
+                    if(globalPlayers.has(action.uuid)){
+                        const victories = globalPlayers.get(action.uuid).victory;
+                        globalPlayers.set(action.uuid, {...lastClickWinner, victory: victories+1});
+                    }
                 }
                 const mostClickWinnerUuid = registeredPlayersToList(registeredPlayers)
                    .filter(x => x.team === winningTeam)
@@ -195,7 +198,10 @@ function enableSocketServer(io, jaugeWarState, colors, playersCount, registeredP
                 mostClickWinner.victory += 2;
                 if (mostClickWinner) {
                     registeredPlayers.set(mostClickWinnerUuid, mostClickWinner);
-                    globalPlayers.set(mostClickWinnerUuid, mostClickWinner);
+                    if(globalPlayers.has(action.uuid)){
+                        const victories = globalPlayers.get(action.uuid).victory;
+                        globalPlayers.set(action.uuid, {...lastClickWinner, victory: victories+2});
+                    }
                 }
                 io.emit(VICTORY_EVENT, {
                     winningColor:

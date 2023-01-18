@@ -16,6 +16,7 @@ const roomName = ref('')
 const router = useRouter();
 const games = ref<Game[]>([]);
 const players = ref<Player[]>([]);
+let loggedPlayer = ref<Player | null>();
 
 function registerUsername() {
   if (!inputUserName.value) {
@@ -23,12 +24,21 @@ function registerUsername() {
   }
   localStorage.jaugeWarUsername = inputUserName.value;
   localStorage.jaugeWarUUID = v4();
-  userUUID = localStorage.jaugeWarUUID;
   loggedIn.value = true;
+  loggedPlayer.value = {id: userUUID, name: inputUserName.value, victory: 0};
 }
 
 function createGame() {
-  gameStateService?.addGame({id: "", name: roomName?.value}).then(createdGame => {
+  if(!roomName?.value){
+    return;
+  }
+  if(!loggedPlayer?.value){
+    return;
+  }
+  if(games.value.find(game => game.owner.id === loggedPlayer.value?.id)){
+    return;
+  }
+  gameStateService?.addGame({id: "", name: roomName.value, owner: loggedPlayer.value }).then(createdGame => {
     router.push('/game/'+createdGame.id)
   })
 }
@@ -44,8 +54,7 @@ function sortByVictory(players: any[]) {
 
 onMounted(() => {
   if(localStorage.jaugeWarUUID && localStorage.jaugeWarUsername){
-    inputUserName.value  = localStorage.jaugeWarUsername;
-    userUUID = localStorage.jaugeWarUUID;
+    loggedPlayer.value = {id: localStorage.jaugeWarUUID, name: localStorage.jaugeWarUsername, victory: 0}
     loggedIn.value = true;
   }
   gameStateService?.retrieveGames().then(retrievedGames => {
@@ -54,6 +63,9 @@ onMounted(() => {
 
   playersService?.retrievePlayers().then(retrievedPlayers => {
     players.value = retrievedPlayers;
+    if(loggedPlayer.value){
+      loggedPlayer.value.victory = retrievedPlayers.find(player => player.id === loggedPlayer.value?.id)?.victory ?? 0;
+    }
   }).catch(err => console.log(err));
 })
 
@@ -68,7 +80,7 @@ onMounted(() => {
     <div v-if="loggedIn" class="w-full flex flex-col gap-[12px]">
       <div class="flex justify-between items-center gap-[2px]">
         <span class="text-base font-medium">Connecté en tant que:</span>
-        <span class="text-lg font-semibold" v-if="loggedIn" v-on:keyup.enter="registerUsername()">{{ inputUserName }}</span>
+        <span class="text-lg font-semibold" v-if="loggedIn && loggedPlayer" v-on:keyup.enter="registerUsername()">{{ loggedPlayer.name }}</span>
       </div>
       <div class="flex flex-col gap-[8px]">
         <h2 class="text-2xl font-bold">Créer une partie privée:</h2>
@@ -80,9 +92,10 @@ onMounted(() => {
       <div class="flex flex-col gap-[8px]">
         <h2 class="text-2xl font-bold">Rejoindre une partie privée:</h2>
         <span v-if="games.length < 1" class="text-lg font-semibold"> Aucune partie disponible, Créer la votre !</span>
-        <div v-for="game in games" class="flex justify-between items-center p-[8px] bg-white/50 rounded-lg">
+        <div v-for="game in games" class="flex justify-between items-center p-[8px] bg-white/50 rounded-lg max-h-[20vh] overflow-auto">
           <span class="text-lg font-bold">{{ game.name }}</span>
-          <button class="text-lg font-semibold flex justify-center items-center border border-solid border-white border-[4px] p-[4px] text-lg font-medium rounded-lg" v-on:click="joinGame(game.id)"> Rejoindre </button></div>
+          <span class="text-lg font-bold">{{ game.owner.name }}</span>
+          <button class="text-lg font-semibold flex justify-center items-center border border-solid border-white border-[4px] p-[4px] text-lg font-semibold rounded-lg" v-on:click="joinGame(game.id)"> Rejoindre </button></div>
       </div>
     </div>
     <div class="w-full flex flex-col gap-[8px]" v-if="players">
