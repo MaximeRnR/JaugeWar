@@ -1,4 +1,8 @@
 
+const injector = require("./backend/service-supplier");
+injector.databaseServiceSupplier = () => new (require('./backend/in-memory-db/in-memory-database').inMemoryDbService);
+injector.gameServiceSupplier = (databaseService) => new (require('./backend/jauge-war-game/jauge-war-game-service').jaugeWarGameService)(databaseService);
+
 process.on('uncaughtException', function (err) {
     console.log(err);
 });
