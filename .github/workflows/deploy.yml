@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Hop
 
 on:
   push:
