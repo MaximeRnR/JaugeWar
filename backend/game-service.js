@@ -1,4 +1,4 @@
-const {databaseService} = require('./database-service');
+const {databaseService} = require('./supabase-database-service');
 
 class GameService {
    startGameOn(io) {

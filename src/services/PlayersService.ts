@@ -2,7 +2,7 @@ import { ref, Ref } from 'vue'
 
 export interface Player {
    id: string,
-   name: string,
+   username: string,
    victory: number;
 }
 
@@ -11,23 +11,22 @@ export interface PlayersService {
    retrievePlayers: () => Promise<Player[]>;
 }
 
-const BACK_URL = "" ;
+const BACK_URL = "";
 
 export default function usePlayersService() {
 
    async function addPlayer(newPlayer: Player) {
-      const response = await fetch(BACK_URL + "/api/players/create", {
+      return fetch(BACK_URL + "/api/players/create", {
          method: "POST",
          headers: {
             'Content-Type': 'application/json',
          },
          body: JSON.stringify(newPlayer)
-      });
-      const createdPlayer = await response.json();
-      return Promise.resolve(createdPlayer);
-   }
+      }).then(async response => {
+         return (await response.json()) as Player
+      })
+        .catch(error => console.error('Error:', error))
 
-   function removePlayer(id: string) {
    }
 
    async function retrievePlayers(){
@@ -38,7 +37,6 @@ export default function usePlayersService() {
 
    return {
       addPlayer,
-      removePlayer,
-      retrievePlayers
+      retrievePlayers,
    }
 }
