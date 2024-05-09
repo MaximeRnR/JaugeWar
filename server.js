@@ -3,8 +3,6 @@ process.on('uncaughtException', function (err) {
 });
 
 console.log("Starting server");
-console.log(process.env.SUPABASE_URL)
-console.log(process.env.SUPABASE_KEY)
 
 const PORT = process.env.PORT || 3000;
 const path = require('path');

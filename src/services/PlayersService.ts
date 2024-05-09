@@ -9,7 +9,7 @@ export interface PlayersService {
    retrievePlayers: () => Promise<Player[]>;
 }
 
-const BACK_URL = "http://localhost:3000"
+const BACK_URL = ""
 
 export default function usePlayersService() {
 

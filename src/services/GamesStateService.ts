@@ -12,7 +12,7 @@ export interface GameStateService {
    retrieveGames: () => Promise<Game[]>;
 }
 
-const BACK_URL = "http://localhost:3000"
+const BACK_URL = ""
 
 export default function useGameService() {
 

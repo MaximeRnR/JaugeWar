@@ -2,7 +2,6 @@ const createClient = require('@supabase/supabase-js').createClient;
 
 class SupabaseDatabaseService {
 
-
     supabaseClient = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
 
     globalPlayers = new Map();
@@ -47,6 +46,8 @@ class SupabaseDatabaseService {
     }
 
     async init() {
+        console.log(process.env.SUPABASE_URL)
+        console.log(process.env.SUPABASE_KEY)
         await this.supabaseClient.auth.signInAnonymously();
         await this.refreshPlayers();
     }
