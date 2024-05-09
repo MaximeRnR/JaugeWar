@@ -1,5 +1,4 @@
-import { ref, Ref } from 'vue'
-import {Player} from './PlayersService';
+import type {Player} from './PlayersService';
 
 export interface Game {
    id: string,
@@ -13,7 +12,7 @@ export interface GameStateService {
    retrieveGames: () => Promise<Game[]>;
 }
 
-const BACK_URL = "";
+const BACK_URL = "http://localhost:3000"
 
 export default function useGameService() {
 

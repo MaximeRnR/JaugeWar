@@ -1,10 +1,10 @@
 <script setup lang="ts">
 
 import {inject, onMounted, ref} from 'vue';
-import {Game, GameStateService} from '../services/GamesStateService';
+import type {Game, GameStateService} from '../services/GamesStateService';
 import {v4} from 'uuid';
 import {useRouter} from 'vue-router';
-import {Player, PlayersService} from '../services/PlayersService';
+import type {Player, PlayersService} from '../services/PlayersService';
 import jauge from '../assets/jauge.svg';
 
 const gameStateService: GameStateService | undefined = inject('gameStateService');

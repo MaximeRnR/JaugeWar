@@ -1,5 +1,3 @@
-import { ref, Ref } from 'vue'
-
 export interface Player {
    id: string,
    username: string,
@@ -11,7 +9,7 @@ export interface PlayersService {
    retrievePlayers: () => Promise<Player[]>;
 }
 
-const BACK_URL = "";
+const BACK_URL = "http://localhost:3000"
 
 export default function usePlayersService() {
 
